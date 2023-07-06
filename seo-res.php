@@ -249,6 +249,36 @@ foreach ($externalLinkNodes as $linkNode) {
 
 
 
+function checkUnsafeCrossOriginLinks($html, $currentUrl)
+{
+  $currentDomain = parse_url($currentUrl, PHP_URL_HOST);
+
+  $dom = new DOMDocument();
+  libxml_use_internal_errors(true); // Ignore any HTML parsing errors
+  $dom->loadHTML($html);
+  libxml_use_internal_errors(false);
+
+  $xpath = new DOMXPath($dom);
+
+  $unsafeLinks = [];
+  $linkNodes = $xpath->query('//a[@href]');
+  foreach ($linkNodes as $linkNode) {
+    $href = $linkNode->getAttribute('href');
+    if (!empty($href) && filter_var($href, FILTER_VALIDATE_URL)) {
+      $linkDomain = parse_url($href, PHP_URL_HOST);
+      if ($linkDomain !== $currentDomain) {
+        $unsafeLinks[] = [
+          'url' => $href,
+          'text' => trim(preg_replace('/\s+/', ' ', $linkNode->textContent))
+        ];
+      }
+    }
+  }
+
+  return $unsafeLinks;
+}
+$unsafeLinks = checkUnsafeCrossOriginLinks($html, $url);
+
 
 
 
@@ -263,6 +293,7 @@ $response = [
   'favicon' => $favicon,
   'domSize' => $domSize,
   'pageSize' => $pageSize,
+  'unsafeLinks' => $unsafeLinks,
   'hasDoctype' => $hasDoctype,
   'language' => $language,
   'title' => $title,
