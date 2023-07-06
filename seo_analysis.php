@@ -16,7 +16,8 @@ if (!filter_var($url, FILTER_VALIDATE_URL)) {
 $urlParts = parse_url($url);
 $domain = $urlParts['host'];
 
-
+// Enable output buffering
+ob_start();
 // Function to fetch the HTML content of a URL
 function fetchHTML($url)
 {
@@ -184,48 +185,47 @@ $internalLinks = [];
 $internalLinkUrls = [];
 $internalLinkNodes = $xpath->query('//a[not(starts-with(@href, "#"))]');
 foreach ($internalLinkNodes as $linkNode) {
-    $href = $linkNode->getAttribute('href');
-    $text = trim(preg_replace('/\s+/', ' ', $linkNode->textContent));
+  $href = $linkNode->getAttribute('href');
+  $text = trim(preg_replace('/\s+/', ' ', $linkNode->textContent));
 
-    if (!empty($href) && !empty($text)) {
-        // Check if $href is an absolute URL and belongs to the same domain
-        if (filter_var($href, FILTER_VALIDATE_URL)) {
-            $parsedHref = parse_url($href);
-            print_r($parsedHref);
-            // Check if the parsed URL matches any of the domain variations
-            $parsedUrlHost = isset($parsedHref['host']) ? $parsedHref['host'] : '';
-            $originalUrlHost = parse_url($url, PHP_URL_HOST);
-            $wwwOriginalUrlHost = 'www.' . $originalUrlHost;
+  if (!empty($href) && !empty($text)) {
+    // Check if $href is an absolute URL and belongs to the same domain
+    if (filter_var($href, FILTER_VALIDATE_URL)) {
+      $parsedHref = parse_url($href);
+      // Check if the parsed URL matches any of the domain variations
+      $parsedUrlHost = isset($parsedHref['host']) ? $parsedHref['host'] : '';
+      $originalUrlHost = parse_url($url, PHP_URL_HOST);
+      $wwwOriginalUrlHost = 'www.' . $originalUrlHost;
 
-            if ($parsedUrlHost === $originalUrlHost || $parsedUrlHost === $wwwOriginalUrlHost || $wwwOriginalUrlHost === $parsedUrlHost) {
-                $fullUrl = $href;
-            } else {
-                continue; // Skip external URLs
-            }
-        } else {
-            $base = rtrim($url, '/');
-            $separator = '/';
-            if (substr($href, 0, 1) === '/') {
-                $separator = '';
-            }
-            $fullUrl = $base . $separator . $href;
-        }
-
-        $lowercaseUrl = strtolower($fullUrl);
-
-        // Check if the lowercase URL has already been added to the array
-        $isInternalLink = isset($internalLinkUrls[$lowercaseUrl]);
-
-        if (!$isInternalLink) {
-            $internalLinks[] = [
-                'url' => $fullUrl,
-                'text' => $text
-            ];
-
-            // Add the lowercase URL to the list of added URLs
-            $internalLinkUrls[$lowercaseUrl] = true;
-        }
+      if ($parsedUrlHost === $originalUrlHost || $parsedUrlHost === $wwwOriginalUrlHost || $wwwOriginalUrlHost === $parsedUrlHost) {
+        $fullUrl = $href;
+      } else {
+        continue; // Skip external URLs
+      }
+    } else {
+      $base = rtrim($url, '/');
+      $separator = '/';
+      if (substr($href, 0, 1) === '/') {
+        $separator = '';
+      }
+      $fullUrl = $base . $separator . $href;
     }
+
+    $lowercaseUrl = strtolower($fullUrl);
+
+    // Check if the lowercase URL has already been added to the array
+    $isInternalLink = isset($internalLinkUrls[$lowercaseUrl]);
+
+    if (!$isInternalLink) {
+      $internalLinks[] = [
+        'url' => $fullUrl,
+        'text' => $text
+      ];
+
+      // Add the lowercase URL to the list of added URLs
+      $internalLinkUrls[$lowercaseUrl] = true;
+    }
+  }
 }
 
 
@@ -505,6 +505,7 @@ $report = [
   'language' => $language,
   'hasDoctype' => $hasDoctype,
   'sitemap' => $sitemapUrl,
+  'mostCommonKeywords' => $mostCommonKeywords,
   'characterEncoding' => $characterEncoding,
   'title' => $title,
   'description' => $description,
@@ -514,7 +515,6 @@ $report = [
   'hasRobotsTxt' => $hasRobotsTxt,
   'hasViewport' => $viewportContent,
   'hasCanonicalUrl' => $hasCanonicalUrl,
-  'mostCommonKeywords' => $mostCommonKeywords,
   'redirects' => $redirects,
   'pageSize' => $pageSize,
   'domSize' => $domSize,
