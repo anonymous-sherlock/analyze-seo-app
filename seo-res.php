@@ -5,6 +5,7 @@ use GuzzleHttp\Client;
 use GuzzleHttp\Promise;
 use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\Promise\Utils;
+use DonatelloZa\RakePlus\RakePlus;
 
 // Initialize the GuzzleHttp client outside the function for connection pooling
 $client = new Client();
@@ -68,11 +69,9 @@ function fetchHTML($url)
 }
 
 
-$startTime = microtime(true);
+
 $html = fetchHTML($url);
-$endTime = microtime(true);
-$executionTime = $endTime - $startTime;
-echo "Execution Time: " . $executionTime . " seconds\n";
+
 // Fetch the HTML content of the provided URL
 // Calculate the page size in bytes
 $pageSize = strlen($html);
@@ -128,6 +127,7 @@ $hasDoctype = strpos($html, '<!DOCTYPE html>') !== false;
 // Initialize totalImageCount
 $totalImageCount = 0;
 // Extract images without alt attribute text and total images used on the website
+
 $imagesWithoutAltText = [];
 $imageNodes = $dom->getElementsByTagName('img');
 foreach ($imageNodes as $imageNode) {
@@ -207,8 +207,6 @@ function checkUnsafeCrossOriginLinks($domObj, $html, $currentUrl)
   $xpath = new DOMXPath($dom);
   $unsafeLinks = [];
   $linkNodes = $xpath->query('//a[@href and string-length(@href) > 0]');
-  $currentDomainFiltered = preg_quote($currentDomain, '/');
-
   // Process links in parallel using multiple threads or processes if possible
   foreach ($linkNodes as $linkNode) {
     $href = $linkNode->getAttribute('href');
@@ -450,11 +448,78 @@ foreach ($externalLinkNodes as $linkNode) {
 
 
 
+
+
+
+
+function extractTextFromHTML($html)
+{
+  // Create a DOMDocument object and load the HTML
+  $dom = new DOMDocument();
+
+  // Suppress warnings and errors for invalid HTML
+  libxml_use_internal_errors(true);
+  $dom->loadHTML($html);
+  libxml_clear_errors();
+
+  // Create a DOMXPath object to query the document
+  $xpath = new DOMXPath($dom);
+
+  // Remove inline style elements
+  $styleNodes = $xpath->query('//style');
+  foreach ($styleNodes as $styleNode) {
+    $styleNode->parentNode->removeChild($styleNode);
+  }
+
+  // Remove script elements
+  $scriptNodes = $xpath->query('//script');
+  foreach ($scriptNodes as $scriptNode) {
+    $scriptNode->parentNode->removeChild($scriptNode);
+  }
+
+  // Get the text content without tags and inline styles
+  $text = strip_tags($dom->saveHTML());
+
+  // Remove extra spaces
+  $text = preg_replace('/\s+/', ' ', $text);
+
+  // Remove punctuation
+  // $text = preg_replace('/[^\p{L}\p{N}\s]/u', '', $text);
+
+  // Remove extra full stops
+  // $text = preg_replace('/\.{2,}/', '.', $text);
+
+  return trim($text);
+}
+
+$stopwords = json_decode(file_get_contents('stopword/en.json'), true);
+
+
+$text = extractTextFromHTML($html);
+$wordCount = str_word_count($text);
+
+
+$keywords = RakePlus::create($text, $stopwords)->keywords();
+
+// Extract most common keyword using RakePlus
+$mostCommonKeyword = $keywords;
+
+
+
+
+
+
+
+
+
 // End output buffering
 ob_end_flush();
 
 // Create the final response array
 $response = [
+  'wordCount' => $wordCount,
+  'text' => $text,
+  'mostCommonKeywords' => $mostCommonKeyword,
   'url' => $url,
   'domain' => $domain,
   'serverSignature' => $serverSignature,
