@@ -6,6 +6,9 @@
     <link rel="stylesheet" type="text/css" href="styles.css" />
   </head>
   <body>
+    <div class="loader">
+      
+    </div>
     <div class="container">
       <div class="hero">
         <h1>Webscrush Powerful SEO Tool</h1>
@@ -27,9 +30,10 @@
         </form>
       </div>
 
+
       <!-- report result  -->
       <div
-        class="tool-results-wrapper result report-result"
+        class="tool-results-wrapper result report-result hidden"
         bis_skin_checked="1"
       >
         <div class="wrap-content mb-0 pb-0" bis_skin_checked="1">
@@ -176,11 +180,10 @@
                         ></a>
                       </div>
                       <div
-                        class="my-2 text-break text-muted"
+                        class="my-2 text-break text-muted site-description"
                         bis_skin_checked="1"
                       >
-                        Dating your way! Match, chat, and make new friends for
-                        dates or find friends.
+                        <!-- added later -->
                       </div>
                     </div>
                   </div>
@@ -258,7 +261,9 @@
                             bis_skin_checked="1"
                           >
                             <i class="an an-resources an-2x an-light"></i>
-                            <span class="me-2 ps-3">19 Resources</span>
+                            <span class="me-2 ps-3 http-request-count"
+                              >0 Resources</span
+                            >
                           </div>
                         </div>
                         <div
@@ -952,7 +957,11 @@
                           </div>
                         </div>
                         <div class="col-12 col-lg-8" bis_skin_checked="1">
-                          <p>This webpage has <span class="internal-links-count">0</span> internal links</p>
+                          <p>
+                            This webpage has
+                            <span class="internal-links-count">0</span> internal
+                            links
+                          </p>
                           <ul
                             class="list-group rounded-0 p-0 mt-3"
                             id="link-container"
@@ -1241,9 +1250,7 @@
                             This DNS server is using an SPF record.
                           </p>
                           <div class="mt-1" bis_skin_checked="1">
-                            <code
-                              >google-site-verification=QarKOfFqJD8NJQtqBbFDNzssdJvOLQCY8E8VzqI8OmU</code
-                            >
+                            <code class="spf-record"></code>
                           </div>
                         </div>
                       </div>
@@ -1295,16 +1302,8 @@
                             particularly if the URL is redirecting from a
                             non-www version to its www version, or vice-versa
                           </p>
-                          <div class="mt-1" bis_skin_checked="1">
-                            <code>https://flyersdesk.com/</code>
-                            <span class="px-1 bg-info text-white">→</span>
-                            <code
-                              >https://gievaiyetheaze.gives/?u=k8pp605&amp;o=c9ewtnr&amp;t=eee</code
-                            >
-                            <span class="px-1 bg-info text-white">→</span>
-                            <code
-                              >https://play.google.com/store/apps/details?id=com.tinder</code
-                            >
+                          <div class="mt-1 url-redirect" bis_skin_checked="1">
+                            <!-- added later -->
                           </div>
                         </div>
                       </div>
@@ -1689,111 +1688,10 @@
                             from the server, which will ultimately slow down the
                             loading of your webpage.
                           </p>
-                          <ul class="list-group rounded-0 p-0 mt-3">
-                            <li class="list-group-item">
-                              <div
-                                class="d-flex justify-content-between"
-                                data-bs-toggle="collapse"
-                                href="#multiCollapseH_links_images"
-                                role="button"
-                                aria-expanded="false"
-                                aria-controls="multiCollapseH_links_images"
-                                bis_skin_checked="1"
-                              >
-                                <p class="mb-0">images</p>
-                                <span class="badge badge-primary">18</span>
-                              </div>
-                              <div
-                                class="collapse"
-                                id="multiCollapseH_links_images"
-                                bis_skin_checked="1"
-                              >
-                                <hr />
-                                <ol class="mb-0 pb-2">
-                                  <li class="py-1 text-break">
-                                    https://fonts.gstatic.com/s/i/productlogos/avatar_anonymous/v4/web-32dp/logo_avatar_anonymous_color_1x_web_32dp.png
-                                  </li>
-                                  <li class="py-1 text-break">
-                                    https://play-lh.googleusercontent.com/fDpoqIbZ884ylRnMK8Lx9Fu4DsLQk5yt4f9WkxeOAPpGnzc9BTi_YKkMsLvoMdx7Uzg=w240-h480-rw
-                                  </li>
-                                  <li class="py-1 text-break">
-                                    https://play-lh.googleusercontent.com/fDpoqIbZ884ylRnMK8Lx9Fu4DsLQk5yt4f9WkxeOAPpGnzc9BTi_YKkMsLvoMdx7Uzg=w240-h480-rw
-                                  </li>
-                                  <li class="py-1 text-break">
-                                    https://play-lh.googleusercontent.com/fDpoqIbZ884ylRnMK8Lx9Fu4DsLQk5yt4f9WkxeOAPpGnzc9BTi_YKkMsLvoMdx7Uzg=w240-h480-rw
-                                  </li>
-                                  <li class="py-1 text-break">
-                                    https://play-lh.googleusercontent.com/rz5pvuMQnBEVfxyPTplkMeGp3PzBLaNKQnbpC85tMM_DDPFrkAfqncW7TYekAnxo8r5goMNJBkCAYndVAUg=w48-h16-rw
-                                  </li>
-                                  <li class="py-1 text-break">
-                                    https://play-lh.googleusercontent.com/YjX6U0xrpDX6p9bRqfyaiIcr8LmWJQjKpjEhofh54p3T9MZq8y-bHBpZTUDKDqrh=w526-h296-rw
-                                  </li>
-                                  <li class="py-1 text-break">
-                                    https://play-lh.googleusercontent.com/WWJE1wosHL4uo1qX6KAmOAP3N_V4RCyK6bMJO1KaKSWc3hcKWm8INy0KO4PORnSnnBc=w526-h296-rw
-                                  </li>
-                                  <li class="py-1 text-break">
-                                    https://play-lh.googleusercontent.com/Anwn4H8ay1LJFx-uDoVqCDLeBydcK2THS0OeH44FRV0I4H7Zi1adLwqF3TLckK94knP_=w526-h296-rw
-                                  </li>
-                                  <li class="py-1 text-break">
-                                    https://play-lh.googleusercontent.com/CKuVZ-0vtkTf3wWG6_l8LHlN8Ee4thkjIHahZ-UAxy97B4UoekWrlY4TxcQXYauVqTI=w526-h296-rw
-                                  </li>
-                                  <li class="py-1 text-break">
-                                    https://play-lh.googleusercontent.com/vSCIDKLJgTmP_Sww65mA7cmIPU89oJQe4Ufy6Toiaayq7i1hoxR8YgL5ctnq1HLJtGg=w526-h296-rw
-                                  </li>
-                                  <li class="py-1 text-break">
-                                    https://play-lh.googleusercontent.com/aT9_hJ8IXbbMY-Hjbp6qFZSLEsh-gleyT0L1pJMHlXpCq-f-JkHechjM2BBTVA6GFyzS=w526-h296-rw
-                                  </li>
-                                  <li class="py-1 text-break">
-                                    https://play-lh.googleusercontent.com/b3MfPeeCBKisHMmImXD6LDRPtr7hly342AI6wik91NGEFpQBzZvCQePmbljOJxncjw=w526-h296-rw
-                                  </li>
-                                  <li class="py-1 text-break">
-                                    https://play-lh.googleusercontent.com/EhuGna9qCDVYvGykjR0BV6rkESFKDAu6zYxqCp2rMAlWmesbYUpMyjD-8rU68yQh1A=w526-h296-rw
-                                  </li>
-                                  <li class="py-1 text-break">
-                                    https://play-lh.googleusercontent.com/iFstqoxDElUVv4T3KxkxP3OTcuFvWF5ZQQjT7aIxy4n2uaVigCCykxeG6EZV9FQ10X1itPj1oORm=s20-rw
-                                  </li>
-                                  <li class="py-1 text-break">
-                                    https://play-lh.googleusercontent.com/12USW7aflgz466ifDehKTnMoAep_VHxDmKJ6jEBoDZWCSefOC-ThRX14Mqe0r8KF9XCzrpMqJts=s20-rw
-                                  </li>
-                                  <li class="py-1 text-break">
-                                    https://play-lh.googleusercontent.com/W5DPtvB8Fhmkn5LbFZki_OHL3ZI1Rdc-AFul19UK4f7np2NMjLE5QquD6H0HAeEJ977u3WH4yaQ=s20-rw
-                                  </li>
-                                  <li class="py-1 text-break">
-                                    https://play-lh.googleusercontent.com/ohRyQRA9rNfhp7xLW0MtW1soD8SEX45Oec7MyH3FaxtukWUG_6GKVpvh3JiugzryLi7Bia02HPw=s20-rw
-                                  </li>
-                                  <li class="py-1 text-break">
-                                    https://ssl.gstatic.com/store/images/regionflags/germany.png
-                                  </li>
-                                </ol>
-                              </div>
-                            </li>
-                            <li class="list-group-item">
-                              <div
-                                class="d-flex justify-content-between"
-                                data-bs-toggle="collapse"
-                                href="#multiCollapseH_links_javascript"
-                                role="button"
-                                aria-expanded="false"
-                                aria-controls="multiCollapseH_links_javascript"
-                                bis_skin_checked="1"
-                              >
-                                <p class="mb-0">javascript</p>
-                                <span class="badge badge-primary">1</span>
-                              </div>
-                              <div
-                                class="collapse"
-                                id="multiCollapseH_links_javascript"
-                                bis_skin_checked="1"
-                              >
-                                <hr />
-                                <ol class="mb-0 pb-2">
-                                  <li class="py-1 text-break">
-                                    https://www.gstatic.com/_/boq-play/_/js/k=boq-play.PlayStoreUi.en_US.euzhvexzDPo.2021.O/am=xu1h9ENAm19sAQ/d=1/excm=_b,_r,_tp,appdetailsview/ed=1/dg=0/wt=2/ujg=1/rs=AB1caFW_pJ9_LdpUWfWoXR8ymXQzCub_ZQ/m=_b,_tp,_r
-                                  </li>
-                                </ol>
-                              </div>
-                            </li>
-                          </ul>
+                          <ul
+                            class="list-group rounded-0 p-0 mt-3"
+                            id="http-request-container"
+                          ></ul>
                         </div>
                       </div>
                     </div>
@@ -2576,192 +2474,10 @@
                           rel="noreferrer" attribute, which can expose it to
                           performance and security issues!
                         </p>
-                        <ul class="list-group rounded-0 p-0 mt-3">
-                          <li class="list-group-item">
-                            <div
-                              class="d-flex justify-content-between"
-                              data-bs-toggle="collapse"
-                              href="#coLinksCollapse"
-                              role="button"
-                              aria-expanded="false"
-                              aria-controls="coLinksCollapse"
-                              bis_skin_checked="1"
-                            >
-                              <p class="mb-0">Unsafe Cross-Origin Links</p>
-                              <span class="badge badge-primary">20</span>
-                            </div>
-
-                            <div
-                              class="collapse"
-                              id="coLinksCollapse"
-                              bis_skin_checked="1"
-                            >
-                              <hr />
-                              <ol class="mb-0 pb-2">
-                                <li class="py-1 text-break">
-                                  <a
-                                    href="https://policies.google.com/privacy"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    >https://policies.google.com/privacy</a
-                                  >
-                                </li>
-                                <li class="py-1 text-break">
-                                  <a
-                                    href="https://myaccount.google.com/termsofservice"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    >https://myaccount.google.com/termsofservice</a
-                                  >
-                                </li>
-                                <li class="py-1 text-break">
-                                  <a
-                                    href="https://support.google.com/googleplay/?p=report_content"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    >https://support.google.com/googleplay/?p=report_content</a
-                                  >
-                                </li>
-                                <li class="py-1 text-break">
-                                  <a
-                                    href="https://tinder.com"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    >https://tinder.com</a
-                                  >
-                                </li>
-                                <li class="py-1 text-break">
-                                  <a
-                                    href="mailto:help@gotinder.com"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    >mailto:help@gotinder.com</a
-                                  >
-                                </li>
-                                <li class="py-1 text-break">
-                                  <a
-                                    href="https://maps.google.com/?q=Tinder%0A8833%20W.%20Sunset%20Blvd.%0AWest%20Hollywood,%20CA%2090069"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    >https://maps.google.com/?q=Tinder%0A8833%20W.%20Sunset%20Blvd.%0AWest%20Hollywood,%20CA%2090069</a
-                                  >
-                                </li>
-                                <li class="py-1 text-break">
-                                  <a
-                                    href="https://policies.tinder.com/privacy"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    >https://policies.tinder.com/privacy</a
-                                  >
-                                </li>
-                                <li class="py-1 text-break">
-                                  <a
-                                    href="https://support.google.com/googleplay/?p=report_content"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    >https://support.google.com/googleplay/?p=report_content</a
-                                  >
-                                </li>
-                                <li class="py-1 text-break">
-                                  <a
-                                    href="https://play.google.com/about/play-pass"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    >https://play.google.com/about/play-pass</a
-                                  >
-                                </li>
-                                <li class="py-1 text-break">
-                                  <a
-                                    href="https://play.google.com/about/giftcards"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    >https://play.google.com/about/giftcards</a
-                                  >
-                                </li>
-                                <li class="py-1 text-break">
-                                  <a
-                                    href="https://support.google.com/googleplay/answer/134336"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    >https://support.google.com/googleplay/answer/134336</a
-                                  >
-                                </li>
-                                <li class="py-1 text-break">
-                                  <a
-                                    href="https://support.google.com/googleplay?p=pff_parentguide"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    >https://support.google.com/googleplay?p=pff_parentguide</a
-                                  >
-                                </li>
-                                <li class="py-1 text-break">
-                                  <a
-                                    href="https://support.google.com/googleplay/answer/7007852"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    >https://support.google.com/googleplay/answer/7007852</a
-                                  >
-                                </li>
-                                <li class="py-1 text-break">
-                                  <a
-                                    href="https://play.google.com/intl/en-US_de/about/play-terms.html"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    >https://play.google.com/intl/en-US_de/about/play-terms.html</a
-                                  >
-                                </li>
-                                <li class="py-1 text-break">
-                                  <a
-                                    href="https://policies.google.com/privacy"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    >https://policies.google.com/privacy</a
-                                  >
-                                </li>
-                                <li class="py-1 text-break">
-                                  <a
-                                    href="https://support.google.com/googleplay/contact/cancel_sub_request"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    >https://support.google.com/googleplay/contact/cancel_sub_request</a
-                                  >
-                                </li>
-                                <li class="py-1 text-break">
-                                  <a
-                                    href="https://www.google.de/contact/impressum.html"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    >https://www.google.de/contact/impressum.html</a
-                                  >
-                                </li>
-                                <li class="py-1 text-break">
-                                  <a
-                                    href="https://support.google.com/googleplay/?p=about_play"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    >https://support.google.com/googleplay/?p=about_play</a
-                                  >
-                                </li>
-                                <li class="py-1 text-break">
-                                  <a
-                                    href="http://developer.android.com/index.html"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    >http://developer.android.com/index.html</a
-                                  >
-                                </li>
-                                <li class="py-1 text-break">
-                                  <a
-                                    href="https://store.google.com/?playredirect=true"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    >https://store.google.com/?playredirect=true</a
-                                  >
-                                </li>
-                              </ol>
-                            </div>
-                          </li>
-                        </ul>
+                        <ul
+                          class="list-group rounded-0 p-0 mt-3"
+                          id="unsafe-link-container"
+                        ></ul>
                       </div>
                     </div>
                   </div>
@@ -3823,6 +3539,7 @@
                         <p class="mb-0">
                           This webpage is not using deprecated html tags
                         </p>
+                        <div id="deprecated-tag"></div>
                       </div>
                     </div>
                   </div>

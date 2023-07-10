@@ -27,8 +27,6 @@ if (!filter_var($url, FILTER_VALIDATE_URL)) {
 // Enable output buffering
 ob_start();
 
-
-
 // Function to fetch the HTML content of a URL using Guzzle HTTP client
 function fetchHTML($url)
 {
@@ -39,6 +37,8 @@ function fetchHTML($url)
       'Accept-Encoding' => 'gzip' // Enable gzip compression
     ],
     'timeout' => 5,
+    'http_version' => '2.0',
+
   ]);
 
   $html = '';
@@ -60,7 +60,7 @@ function fetchHTML($url)
       // You can implement your own error handling logic here
       // For example, you can retry the request a certain number of times
       // before returning an error response
-      return fetchHTML($url);
+      echo json_encode(['error' => 'Cannot Check SEO of This Website Try Again After Some Time']);
     }
   );
   $promise->wait();
@@ -69,8 +69,8 @@ function fetchHTML($url)
 }
 
 
-
 $html = fetchHTML($url);
+
 
 // Fetch the HTML content of the provided URL
 // Calculate the page size in bytes
@@ -346,12 +346,177 @@ function getCanonicalUrl($xpath)
   }
   return false; // Canonical URL not found
 }
+function isHttp2Enabled($url)
+{
+  $curlInfo = curl_version();
+  return ($curlInfo['features'] & CURL_VERSION_HTTP2) !== 0;
+}
+function getSocialMediaProfiles($xpath)
+{
+  $socialProfiles = [];
 
+  // Define the social media platforms and their associated domain names
+  $socialPlatforms = [
+    'facebook' => 'facebook.com',
+    'twitter' => 'twitter.com',
+    'instagram' => 'instagram.com',
+    'linkedin' => 'linkedin.com',
+    'youtube' => 'youtube.com',
+    'pinterest' => 'pinterest.com',
+    'snapchat' => 'snapchat.com',
+    'tiktok' => 'tiktok.com',
+    'reddit' => 'reddit.com',
+    'tumblr' => 'tumblr.com',
+    'github' => 'github.com',
+    'wordpress' => 'wordpress.com',
+    'soundcloud' => 'soundcloud.com',
+    'pexels' => 'pexels.com',
+    'behance' => 'behance.net',
+    'dribbble' => 'dribbble.com',
+    'deviantart' => 'deviantart.com',
+    'flickr' => 'flickr.com',
+    'vimeo' => 'vimeo.com',
+    'twitch' => 'twitch.tv',
+    'spotify' => 'spotify.com',
+    'medium' => 'medium.com',
+    'weibo' => 'weibo.com',
+    'vk' => 'vk.com',
+    'telegram' => 'telegram.org',
+    'slack' => 'slack.com',
+    'digg' => 'digg.com',
+    'quora' => 'quora.com',
+    // Add more social media platforms here
+  ];
 
+  // Extract all anchor nodes from the HTML
+  $anchorNodes = $xpath->query('//a');
+
+  // Iterate over the anchor nodes and extract social media profiles
+  foreach ($anchorNodes as $anchorNode) {
+    $href = $anchorNode->getAttribute('href');
+    if (!empty($href)) {
+      foreach ($socialPlatforms as $platform => $domain) {
+        if (strpos($href, $domain) !== false) {
+          $socialProfiles[$platform] = $href;
+          break; // Found the platform, no need to check other platforms
+        }
+      }
+    }
+  }
+
+  return $socialProfiles;
+}
+function checkDeprecatedHTMLTags($xpath)
+{
+  // Define the deprecated HTML tags
+  $deprecatedTags = [
+    'acronym',
+    'applet',
+    'basefont',
+    'big',
+    'center',
+    'dir',
+    'font',
+    'frame',
+    'frameset',
+    'isindex',
+    'noframes',
+    's',
+    'strike',
+    'tt',
+    'u',
+    'xmp',
+    // Add more deprecated tags here
+  ];
+
+  $deprecatedTagCounts = [];
+
+  // Construct the XPath query to select all deprecated tags at once
+  $query = "//" . implode(" | //", $deprecatedTags);
+  $tagNodes = $xpath->query($query);
+
+  // Count the occurrences of each deprecated tag
+  foreach ($tagNodes as $tagNode) {
+    $tagName = $tagNode->tagName;
+    $deprecatedTagCounts[$tagName] = isset($deprecatedTagCounts[$tagName]) ? $deprecatedTagCounts[$tagName] + 1 : 1;
+  }
+
+  return $deprecatedTagCounts;
+}
+function getSSLCertificateInfo($hostname)
+{
+  $sslInfo = [];
+  // Create a context with SSL options
+  $context = stream_context_create(['ssl' => ['capture_peer_cert' => true]]);
+  // Attempt to establish an SSL/TLS connection
+  $stream = stream_socket_client("ssl://$hostname:443", $errno, $errstr, 30, STREAM_CLIENT_CONNECT, $context);
+  if ($stream) {
+    // Retrieve the peer certificate
+    $params = stream_context_get_params($stream);
+    $cert = openssl_x509_parse($params['options']['ssl']['peer_certificate']);
+
+    if ($cert) {
+      // Extract the issuer and expiration date
+      $issuer = $cert['issuer']['O'];
+      $expiration = date('Y-m-d H:i:s', $cert['validTo_time_t']);
+
+      // Assign the SSL certificate information
+      $sslInfo['issuer'] = $issuer;
+      $sslInfo['expiration'] = $expiration;
+    }
+
+    // Close the SSL/TLS connection
+    fclose($stream);
+  }
+
+  return $sslInfo;
+}
+function getHttpRequestsByType($dom, $xpath, $domain)
+{
+  $requests = [
+    'totalRequests' => 0,
+    'Resources' => [
+      'images' => [],
+      'javascript' => [],
+      'css' => [],
+    ],
+  ];
+
+  $resourceTypes = [
+    'images' => ['img', 'src', 'alt'],
+    'javascript' => ['script', 'src'],
+    'css' => ['link', 'href', 'rel', 'stylesheet'],
+  ];
+
+  foreach ($resourceTypes as $resourceType => $attributes) {
+    $nodes = $dom->getElementsByTagName($attributes[0]);
+    foreach ($nodes as $node) {
+      $attributeValue = $node->getAttribute($attributes[1]);
+      if (!empty($attributeValue)) {
+        if (count($attributes) > 2) {
+          if (count($attributes) > 3) {
+            $rel = $node->getAttribute($attributes[2]);
+            if ($rel === $attributes[3]) {
+              $requests['Resources'][$resourceType][] = $attributeValue;
+              $requests['totalRequests']++;
+            }
+          } else {
+            $requests['Resources'][$resourceType][] = $attributeValue;
+            $requests['totalRequests']++;
+          }
+        } else {
+          $requests['Resources'][$resourceType][] = $attributeValue;
+          $requests['totalRequests']++;
+        }
+      }
+    }
+  }
+
+  return $requests;
+}
 // variable for function 
 // Construct the URL for a non-existent page (e.g., example.com/non-existent-page)
 $nonExistentPageUrl = rtrim($url, '/') . '/non-existent-page';
-
 
 // All Function call
 $domSize = count($dom->getElementsByTagName('*'));
@@ -367,7 +532,11 @@ $characterEncoding = getCharacterEncoding($html);
 $viewportContent = getViewportContent($xpath, $html);
 $trackingID = extractTrackingID($html);
 $hasCanonicalUrl = getCanonicalUrl($xpath);
-
+$hasHttp2 = isHttp2Enabled($url);
+$socialMediaProfiles = getSocialMediaProfiles($xpath);
+$deprecatedTags = checkDeprecatedHTMLTags($xpath);
+$sslInfo = getSSLCertificateInfo($domain);
+$httpRequests = getHttpRequestsByType($dom, $xpath, $domain);
 
 
 
@@ -447,11 +616,6 @@ foreach ($externalLinkNodes as $linkNode) {
 
 
 
-
-
-
-
-
 function extractTextFromHTML($html)
 {
   // Create a DOMDocument object and load the HTML
@@ -493,8 +657,6 @@ function extractTextFromHTML($html)
 }
 
 $stopwords = json_decode(file_get_contents('stopword/en.json'), true);
-
-
 $text = extractTextFromHTML($html);
 $wordCount = str_word_count($text);
 
@@ -507,8 +669,85 @@ $mostCommonKeyword = $keywords;
 
 
 
+function checkCompression($url)
+{
+  // Initialize the GuzzleHttp client outside the function for connection pooling
+  $client = new GuzzleHttp\Client();
+
+  // Fetch the HTML content of the URL with gzip compression enabled
+  $response = $client->get($url, [
+    'headers' => [
+      'Accept-Encoding' => 'gzip',
+    ],
+    'http_errors' => false,
+  ]);
+
+  // Check if the server supports gzip compression
+  $compressionEnabled = false;
+  if ($response->hasHeader('Content-Encoding')) {
+    $contentEncoding = $response->getHeaderLine('Content-Encoding');
+    $compressionEnabled = $contentEncoding === 'gzip';
+  }
+
+  // Calculate compression statistics
+  $originalSize = 0;
+  $compressedSize = 0;
+  $compressionRatio = 0;
+  $sizeSavings = 0;
+
+  if ($compressionEnabled) {
+    // Get the gzipped HTML content
+    $body = $response->getBody();
+
+    // Get the original size of the gzipped HTML content
+    $originalSize = strlen($body);
+
+    // Decompress the gzipped HTML content
+    $html = gzdecode($body);
+
+    // Calculate the compressed size
+    $compressedSize = strlen($html);
+
+    // Calculate the compression ratio
+    $compressionRatio = ($originalSize - $compressedSize) / $originalSize * 100;
+
+    // Calculate the size savings
+    $sizeSavings = $originalSize - $compressedSize;
+  }
+
+  // Create the compression result array
+  $compressionResult = [
+    'enabled' => $compressionEnabled,
+    'originalSize' => $originalSize,
+    'compressedSize' => $compressedSize,
+    'compressionRatio' => $compressionRatio,
+    'sizeSavings' => $sizeSavings,
+  ];
+
+  return $compressionResult;
+}
+$compression = checkCompression($url);
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+$starttime = microtime(true);
+
+$endtime = microtime(true);
+$executionTime = $endtime - $starttime;
+// echo "Execution time: " . $executionTime . " seconds\n";
 
 
 
@@ -517,8 +756,14 @@ ob_end_flush();
 
 // Create the final response array
 $response = [
+  'hasHttp2' => $hasHttp2,
+  'compression' => $compression,
+  'httpRequests' => $httpRequests,
+  'ssl' => $sslInfo,
+  'deprecatedTags' => $deprecatedTags,
+  'socialMediaPresence' => $socialMediaProfiles,
   'wordCount' => $wordCount,
-  'text' => $text,
+  // 'text' => $text,
   'mostCommonKeywords' => $mostCommonKeyword,
   'url' => $url,
   'domain' => $domain,
