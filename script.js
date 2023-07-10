@@ -5,7 +5,19 @@ function showScreenshot(event) {
   const webCapture = document.getElementById("screen-shot");
   const reportDate = document.getElementById("generated-report-date");
   reportDate.innerHTML = generateReportDate();
+  const resultContainer = document.querySelector(".tool-results-wrapper");
+  const loader = document.querySelector(".loader"); // Select the loader element
 
+  // Hide the resultContainer and show the loader
+  resultContainer.classList.add("hidden");
+  loader.classList.remove("hidden");
+
+  // Add a small delay to allow the element to be displayed before applying animation
+  // setTimeout(() => {
+  //   resultContainer.style.opacity = "1";
+  //   resultContainer.style.transform = "translateY(0)";
+  //   resultContainer.style.scrollMarginTop = "100px";
+  // }, 300);
   // Remove previously appended webCapture image
   webCapture.innerHTML = "";
 
@@ -65,7 +77,7 @@ function generateReportDate() {
 // performing seo analysis
 async function performSEOAnalysis(url) {
   // Construct the URL with the URL parameter
-  const endpoint = "seo_analysis.php"; // Update with the actual PHP script filename or endpoint
+  const endpoint = "seo-res.php"; // Update with the actual PHP script filename or endpoint
   const requestUrl = `${endpoint}?url=${encodeURIComponent(url)}`;
 
   try {
@@ -97,6 +109,7 @@ function formatBytes(bytes) {
 // render headings
 async function renderHeadings({ headings: data }) {
   const headingContainer = document.getElementById("heading-container");
+  headingContainer.innerHTML = "";
   for (const heading in data) {
     const headingData = data[heading];
     // Skip appending if data is empty or null
@@ -151,10 +164,74 @@ async function renderHeadings({ headings: data }) {
   }
 }
 
-async function fillData(data) {
-  const siteTitleElements = document.getElementsByClassName("site-title");
+async function renderDescription(data) {
+  const { description } = data;
   const siteDescriptionElements =
     document.getElementsByClassName("site-description");
+
+  for (let i = 0; i < siteDescriptionElements.length; i++) {
+    const siteDescriptionElement = siteDescriptionElements[i];
+    siteDescriptionElement.innerHTML = description;
+  }
+}
+
+async function renderTitle(data) {
+  const { title } = data;
+  const siteTitleElements = document.getElementsByClassName("site-title");
+  for (let i = 0; i < siteTitleElements.length; i++) {
+    const siteTitleElement = siteTitleElements[i];
+    siteTitleElement.innerHTML = title;
+  }
+}
+async function renderSPFRecord(data) {
+  const { spfRecord } = data;
+  const spfRecordElement = document.querySelector(".spf-record");
+  spfRecordElement.innerHTML = spfRecord;
+}
+async function renderUrlRedirects(data) {
+  const { url, redirects } = data;
+  const UrlRedirectElement = document.querySelector(".url-redirect");
+  if (url !== redirects) {
+    UrlRedirectElement.innerHTML = `<code>${url}</code>
+    <span class="px-1 bg-info text-white">→</span>
+    <code>${redirects}</code>`;
+  }
+}
+function renderUnsafeLink(data) {
+  const unsafeLinkContainer = document.getElementById("unsafe-link-container");
+
+  const { unsafeLinks } = data;
+
+  const linkItems = unsafeLinks
+    .map(
+      (elem) => `
+    <li class="py-1 text-break">
+      <a href="${elem.url}" target="_blank" rel="noopener noreferrer">${elem.url}</a>
+    </li>
+  `
+    )
+    .join("");
+
+  const html = `
+    <li class="list-group-item">
+      <div class="d-flex justify-content-between" data-bs-toggle="collapse" href="#coLinksCollapse" role="button" aria-expanded="false" aria-controls="coLinksCollapse">
+        <p class="mb-0">Unsafe Cross-Origin Links</p>
+        <span class="badge badge-primary">${unsafeLinks.length}</span>
+      </div>
+      <div class="collapse" id="coLinksCollapse">
+        <hr>
+        <ol class="mb-0 pb-2">
+          ${linkItems}
+        </ol>
+      </div>
+    </li>
+  `;
+  unsafeLinkContainer.innerHTML = html;
+}
+
+async function fillData(data) {
+  console.log(data);
+
   const siteURLElements = document.getElementsByClassName("site-url");
   const siteURLAltElements = document.getElementsByClassName("site-url-alt");
   const imagesWithoutAltAttr = document.getElementById("imagesWithoutAltAttr");
@@ -170,13 +247,21 @@ async function fillData(data) {
     ".missing-alt-image-count"
   );
 
+  renderTitle(data);
+  renderDescription(data);
   renderHeadings(data);
+  renderDescription(data);
   renderSitemap(data);
+  renderSPFRecord(data);
+  renderUrlRedirects(data);
+  renderUnsafeLink(data);
+  renderHttpRequest(data);
+  renderDeprecatedTag(data);
+
   const inPageLinks = {
     "Internal Links": data.internalLinks,
     "External Links": data.externalLinks,
   };
-  console.log(inPageLinks);
   renderInPageLink(inPageLinks);
 
   totalImageCount.innerHTML = data?.totalImageCount;
@@ -189,12 +274,7 @@ async function fillData(data) {
 
   for (let i = 0; i < missingAltImageCount.length; i++) {
     const missingAlt = missingAltImageCount[i];
-    missingAlt.innerHTML = data?.imagesWithoutAlt.length;
-  }
-
-  for (let i = 0; i < siteTitleElements.length; i++) {
-    const siteTitleElement = siteTitleElements[i];
-    siteTitleElement.innerHTML = data?.title;
+    missingAlt.innerHTML = data?.imagesWithoutAltText.length;
   }
 
   for (let i = 0; i < siteURLElements.length; i++) {
@@ -208,15 +288,10 @@ async function fillData(data) {
     siteURLAltElement.innerHTML = data?.url;
   }
 
-  for (let i = 0; i < siteDescriptionElements.length; i++) {
-    const siteDescriptionElement = siteDescriptionElements[i];
-    siteDescriptionElement.innerHTML = data?.description;
-  }
-
   let imagesWithoutAltHtml = "";
-  if (data?.imagesWithoutAlt) {
+  if (data?.imagesWithoutAltText) {
     imagesWithoutAltHtml += '<ol class="mb-0 pb-2">';
-    data.imagesWithoutAlt.forEach((image) => {
+    data?.imagesWithoutAltText.forEach((image) => {
       imagesWithoutAltHtml += `<li class="py-1 text-break"><a href="${image}" target="_blank" rel="noopener noreferrer">${image}</a></li>`;
     });
     imagesWithoutAltHtml += "</ol>";
@@ -333,4 +408,143 @@ function renderInPageLink(data) {
 
     linkContainer.appendChild(linkTag);
   }
+}
+
+function renderHttpRequest(data) {
+  const { Resources, totalRequests } = data?.httpRequests;
+  const httpRequestContainer = document.getElementById(
+    "http-request-container"
+  );
+
+  const httpRequestCount = [
+    ...document.getElementsByClassName("http-request-count"),
+  ];
+
+  httpRequestCount.forEach((item) => {
+    item.innerHTML = `${totalRequests} Resources`;
+  });
+  httpRequestContainer.innerHTML = "";
+
+  // Iterate over the resources and create <li> elements for each one
+  for (const resource in Resources) {
+    const resourceData = Resources[resource];
+
+    // Skip rendering if the resourceData array is empty
+    if (resourceData.length === 0) {
+      continue;
+    }
+    // Create the <li> element for the resource
+    const li = document.createElement("li");
+    li.classList.add("list-group-item");
+
+    // Create the first <div> with class "d-flex justify-content-between"
+    const div1 = document.createElement("div");
+    div1.classList.add("d-flex", "justify-content-between");
+    div1.setAttribute("data-bs-toggle", "collapse");
+    div1.setAttribute("href", `#multiCollapseH_links_${resource}`);
+    div1.setAttribute("role", "button");
+    div1.setAttribute("aria-expanded", "false");
+    div1.setAttribute("aria-controls", `multiCollapseH_links_${resource}`);
+    div1.setAttribute("bis_skin_checked", "1");
+
+    // Create the <p> element inside the first <div>
+    const p = document.createElement("p");
+    p.classList.add("mb-0");
+    p.textContent = resource;
+    div1.appendChild(p);
+
+    // Create the <span> element with class "badge badge-primary"
+    const span = document.createElement("span");
+    span.classList.add("badge", "badge-primary");
+    span.textContent = resourceData.length;
+    div1.appendChild(span);
+
+    li.appendChild(div1);
+
+    // Create the second <div> with class "collapse"
+    const div2 = document.createElement("div");
+    div2.classList.add("collapse");
+    div2.setAttribute("id", `multiCollapseH_links_${resource}`);
+    div2.setAttribute("bis_skin_checked", "1");
+
+    // Create the <hr> element inside the second <div>
+    const hr = document.createElement("hr");
+    div2.appendChild(hr);
+
+    // Create the <ol> element inside the second <div>
+    const ol = document.createElement("ol");
+    ol.classList.add("mb-0", "pb-2");
+
+    // Iterate over the resourceData and create <li> elements for each item
+    for (const item of resourceData) {
+      const liItem = document.createElement("li");
+      liItem.classList.add("py-1", "text-break");
+      liItem.textContent = item;
+      ol.appendChild(liItem);
+    }
+
+    div2.appendChild(ol);
+    li.appendChild(div2);
+
+    // Append the <li> element to the httpRequestContainer
+    httpRequestContainer.appendChild(li);
+  }
+}
+
+async function renderDeprecatedTag(data) {
+  const { deprecatedTags } = data;
+  const deprecatedTagsWrapper = document.getElementById("deprecated-tag");
+  deprecatedTagsWrapper.innerHTML = "";
+
+  if (Object.keys(deprecatedTags).length === 0) {
+    return; // Exit the function if deprecatedTags is empty
+  }
+
+  const deprecatedTagsContainer = document.createElement("div");
+  deprecatedTagsContainer.classList.add(
+    "mt-3",
+    "border",
+    "rounded",
+    "px-3",
+    "py-2"
+  );
+  deprecatedTagsContainer.setAttribute("bis_skin_checked", "1");
+
+  let isFirstTag = true; // Track the first tag
+
+  for (const tagName in deprecatedTags) {
+    const tagCount = deprecatedTags[tagName];
+
+    const tagContainer = document.createElement("div");
+    tagContainer.classList.add("d-flex", "justify-content-between");
+    tagContainer.setAttribute("bis_skin_checked", "1");
+
+    const tagNameElement = document.createElement("div");
+    tagNameElement.classList.add("tag-name");
+    tagNameElement.setAttribute("bis_skin_checked", "1");
+    tagNameElement.textContent = `<${tagName}>`;
+
+    const tagCountElement = document.createElement("div");
+    tagCountElement.classList.add("tag-count");
+    tagCountElement.setAttribute("bis_skin_checked", "1");
+
+    const badgeElement = document.createElement("span");
+    badgeElement.classList.add("badge", "badge-primary");
+    badgeElement.textContent = tagCount;
+
+    tagCountElement.appendChild(badgeElement);
+
+    tagContainer.appendChild(tagNameElement);
+    tagContainer.appendChild(tagCountElement);
+
+    if (!isFirstTag) {
+      tagContainer.classList.add("mt-3"); // Add mt-3 class to tags after the first tag
+    } else {
+      isFirstTag = false; // Update isFirstTag after the first tag
+    }
+
+    deprecatedTagsContainer.appendChild(tagContainer);
+  }
+
+  deprecatedTagsWrapper.appendChild(deprecatedTagsContainer);
 }

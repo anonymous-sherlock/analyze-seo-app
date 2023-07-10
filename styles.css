@@ -7,7 +7,14 @@ body {
   background-color: #f2f3f4;
   text-align: left;
 }
-
+.hidden {
+  display: none;
+}
+.tool-results-wrapper {
+  opacity: 0; /* Set initial opacity to 0 */
+  transform: translateY(50px); /* Set initial translateY value */
+  transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out; /* Add transition properties */
+}
 .container {
   max-width: 1200px;
   margin: 0 auto;
@@ -186,3 +193,6 @@ img.screenCapture {
     padding: 10px !important ;
   }
 }
+
+/* loader css */
+
