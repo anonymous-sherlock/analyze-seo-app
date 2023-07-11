@@ -15,15 +15,18 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 $url = $_GET['url'];
-// Extract the domain from the provided URL
-$urlParts = parse_url($url);
-$domain = $urlParts['host'];
-
 // Validate and sanitize the URL input
 if (!filter_var($url, FILTER_VALIDATE_URL)) {
   echo json_encode(['error' => 'Invalid URL']);
   exit;
 }
+
+
+// Extract the domain from the provided URL
+$urlParts = parse_url($url);
+$domain = $urlParts['host'];
+
+
 // Enable output buffering
 ob_start();
 
@@ -123,6 +126,8 @@ foreach ($headings as $heading => &$value) {
 
 // Checking for Doctype
 $hasDoctype = strpos($html, '<!DOCTYPE html>') !== false;
+// checking framset
+$hasFramesets = $xpath->evaluate('count(//frameset) > 0') ?: false;
 
 // Initialize totalImageCount
 $totalImageCount = 0;
@@ -514,6 +519,13 @@ function getHttpRequestsByType($dom, $xpath, $domain)
 
   return $requests;
 }
+function extractPlaintextEmails($html)
+{
+  $pattern = '/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/';
+  preg_match($pattern, $html, $matches);
+  return $matches[0] ?? [];
+}
+
 // variable for function 
 // Construct the URL for a non-existent page (e.g., example.com/non-existent-page)
 $nonExistentPageUrl = rtrim($url, '/') . '/non-existent-page';
@@ -537,6 +549,7 @@ $socialMediaProfiles = getSocialMediaProfiles($xpath);
 $deprecatedTags = checkDeprecatedHTMLTags($xpath);
 $sslInfo = getSSLCertificateInfo($domain);
 $httpRequests = getHttpRequestsByType($dom, $xpath, $domain);
+$plaintextEmails = extractPlaintextEmails($html);
 
 
 
@@ -744,10 +757,9 @@ $compression = checkCompression($url);
 
 
 $starttime = microtime(true);
-
 $endtime = microtime(true);
 $executionTime = $endtime - $starttime;
-// echo "Execution time: " . $executionTime . " seconds\n";
+// echo "Execution time: " . $executionTime . " seconds\n";  
 
 
 
@@ -757,6 +769,8 @@ ob_end_flush();
 // Create the final response array
 $response = [
   'hasHttp2' => $hasHttp2,
+  'plaintextEmails' => $plaintextEmails,
+  'hasFramesets' => $hasFramesets,
   'compression' => $compression,
   'httpRequests' => $httpRequests,
   'ssl' => $sslInfo,
