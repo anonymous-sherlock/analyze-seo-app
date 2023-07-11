@@ -90,7 +90,9 @@ async function performSEOAnalysis(url) {
       const analysisResult = await response.json();
       // Process the analysis result as needed
       fillData(analysisResult);
-      ErrorTracker(analysisResult);
+      // ErrorTracker(analysisResult);
+      const errorTracker = new ErrorTracker(analysisResult);
+      errorTracker.analyze();
     } else {
       throw new Error(`Error: ${response.status}`);
     }
