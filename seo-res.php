@@ -64,6 +64,7 @@ function fetchHTML($url)
       // For example, you can retry the request a certain number of times
       // before returning an error response
       echo json_encode(['error' => 'Cannot Check SEO of This Website Try Again After Some Time']);
+      exit;
     }
   );
   $promise->wait();
@@ -71,9 +72,11 @@ function fetchHTML($url)
   return $html;
 }
 
-
+$start = microtime(true); // Put it from the begining of the page
 $html = fetchHTML($url);
-
+$finish = microtime(true); // Put it in the very end of the page
+$total_time = round(($finish - $start), 2);
+$loadtime = 'Page generated in ' . $total_time . ' seconds.';
 
 // Fetch the HTML content of the provided URL
 // Calculate the page size in bytes
@@ -451,8 +454,14 @@ function checkDeprecatedHTMLTags($xpath)
 function getSSLCertificateInfo($hostname)
 {
   $sslInfo = [];
-  // Create a context with SSL options
-  $context = stream_context_create(['ssl' => ['capture_peer_cert' => true]]);
+  $context = stream_context_create([
+    'ssl' => [
+      'capture_peer_cert' => true,
+      'verify_peer' => false,
+      'verify_peer_name' => false,
+    ]
+  ]);
+
   // Attempt to establish an SSL/TLS connection
   $stream = stream_socket_client("ssl://$hostname:443", $errno, $errstr, 30, STREAM_CLIENT_CONNECT, $context);
   if ($stream) {
@@ -462,7 +471,7 @@ function getSSLCertificateInfo($hostname)
 
     if ($cert) {
       // Extract the issuer and expiration date
-      $issuer = $cert['issuer']['O'];
+      $issuer = $cert['issuer']['O'] ?? false;
       $expiration = date('Y-m-d H:i:s', $cert['validTo_time_t']);
 
       // Assign the SSL certificate information
@@ -523,8 +532,95 @@ function extractPlaintextEmails($html)
 {
   $pattern = '/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/';
   preg_match($pattern, $html, $matches);
-  return $matches[0] ?? [];
+  return $matches[0] ?? false;
 }
+function extractInlineCSS($xpath)
+{
+  $styles = [];
+
+  // Query the "style" attribute of elements
+  $styleAttributes = $xpath->query('//*[@style]/@style');
+
+  // Extract the inline CSS from the attribute values
+  foreach ($styleAttributes as $styleAttribute) {
+    $style = $styleAttribute->nodeValue;
+    if (!empty($style)) {
+      $styles[] = $style;
+    }
+  }
+
+  return $styles;
+}
+function extractSocialMediaMetaTags($xpath)
+{
+  $metaTags = $xpath->query('/html/head/meta');
+
+  $socialMediaMetaTags = array(
+    'openGraph' => null,
+    'twitterCard' => null,
+    'facebook' => null,
+    'pinterest' => null,
+    'linkedin' => null,
+    'instagram' => null,
+    'googlePlus' => null
+  );
+
+  foreach ($metaTags as $metaTag) {
+    $property = $metaTag->getAttribute('property');
+    $name = $metaTag->getAttribute('name');
+    $content = $metaTag->getAttribute('content');
+
+    switch (true) {
+      case (strpos($property, 'og:') === 0):
+        $socialMediaMetaTags['openGraph'][$property] = $content;
+        break;
+      case (strpos($name, 'twitter:') === 0):
+        $socialMediaMetaTags['twitterCard'][$name] = $content;
+        break;
+      case (strpos($property, 'fb:') === 0):
+        $socialMediaMetaTags['facebook'][$property] = $content;
+        break;
+      case ($name === 'pinterest-rich-pin'):
+        $socialMediaMetaTags['pinterest'][$name] = $content;
+        break;
+      case (strpos($property, 'linkedin:') === 0):
+        $socialMediaMetaTags['linkedin'][$property] = $content;
+        break;
+      case ($name === 'instagram:app_id'):
+        $socialMediaMetaTags['instagram'][$name] = $content;
+        break;
+      case (strpos($name, 'google+:') === 0):
+        $socialMediaMetaTags['googlePlus'][$name] = $content;
+        break;
+    }
+  }
+
+  foreach ($socialMediaMetaTags as &$value) {
+    if (empty($value)) {
+      $value = false;
+    }
+  }
+
+  return $socialMediaMetaTags;
+}
+function extractStructuredData($xpath)
+{
+  // Select the elements containing structured data using XPath
+  $nodes = $xpath->query('//script[@type="application/ld+json"]');
+  // Array to store the extracted structured data
+  $structuredData = [];
+
+
+  foreach ($nodes as $node) {
+    $scriptContent = $node->nodeValue;
+    $jsonLdData = json_decode($scriptContent, true);
+    if ($jsonLdData !== null && isset($jsonLdData['@context']) && $jsonLdData['@context'] === 'https://schema.org') {
+      $structuredData['Schema.org'] = $jsonLdData;
+    }
+  }
+  return $structuredData;
+}
+
 
 // variable for function 
 // Construct the URL for a non-existent page (e.g., example.com/non-existent-page)
@@ -550,6 +646,9 @@ $deprecatedTags = checkDeprecatedHTMLTags($xpath);
 $sslInfo = getSSLCertificateInfo($domain);
 $httpRequests = getHttpRequestsByType($dom, $xpath, $domain);
 $plaintextEmails = extractPlaintextEmails($html);
+$inlineCSS = extractInlineCSS($xpath);
+$socialMediaMetaTags = extractSocialMediaMetaTags($xpath);
+$structuredData = extractStructuredData($xpath);
 
 
 
@@ -674,72 +773,48 @@ $text = extractTextFromHTML($html);
 $wordCount = str_word_count($text);
 
 
-$keywords = RakePlus::create($text, $stopwords)->keywords();
+// $keywords = RakePlus::create($text, $stopwords)->keywords();
 
 // Extract most common keyword using RakePlus
-$mostCommonKeyword = $keywords;
+// $mostCommonKeyword = $keywords;
 
 
 
 
-function checkCompression($url)
+
+
+
+function extract_keywords($str, $minWordLen = 3, $minWordOccurrences = 2, $asArray = false)
 {
-  // Initialize the GuzzleHttp client outside the function for connection pooling
-  $client = new GuzzleHttp\Client();
-
-  // Fetch the HTML content of the URL with gzip compression enabled
-  $response = $client->get($url, [
-    'headers' => [
-      'Accept-Encoding' => 'gzip',
-    ],
-    'http_errors' => false,
-  ]);
-
-  // Check if the server supports gzip compression
-  $compressionEnabled = false;
-  if ($response->hasHeader('Content-Encoding')) {
-    $contentEncoding = $response->getHeaderLine('Content-Encoding');
-    $compressionEnabled = $contentEncoding === 'gzip';
+  function keyword_count_sort($first, $sec)
+  {
+    return $sec[1] - $first[1];
   }
+  $str = preg_replace('/[^\p{L}0-9 ]/', ' ', $str);
+  $str = trim(preg_replace('/\s+/', ' ', $str));
 
-  // Calculate compression statistics
-  $originalSize = 0;
-  $compressedSize = 0;
-  $compressionRatio = 0;
-  $sizeSavings = 0;
+  $words = explode(' ', $str);
+  $keywords = array();
+  while (($c_word = array_shift($words)) !== null) {
+    if (strlen($c_word) < $minWordLen)
+      continue;
 
-  if ($compressionEnabled) {
-    // Get the gzipped HTML content
-    $body = $response->getBody();
-
-    // Get the original size of the gzipped HTML content
-    $originalSize = strlen($body);
-
-    // Decompress the gzipped HTML content
-    $html = gzdecode($body);
-
-    // Calculate the compressed size
-    $compressedSize = strlen($html);
-
-    // Calculate the compression ratio
-    $compressionRatio = ($originalSize - $compressedSize) / $originalSize * 100;
-
-    // Calculate the size savings
-    $sizeSavings = $originalSize - $compressedSize;
+    $c_word = strtolower($c_word);
+    if (array_key_exists($c_word, $keywords))
+      $keywords[$c_word][1]++;
+    else
+      $keywords[$c_word] = array($c_word, 1);
   }
+  usort($keywords, 'keyword_count_sort');
 
-  // Create the compression result array
-  $compressionResult = [
-    'enabled' => $compressionEnabled,
-    'originalSize' => $originalSize,
-    'compressedSize' => $compressedSize,
-    'compressionRatio' => $compressionRatio,
-    'sizeSavings' => $sizeSavings,
-  ];
-
-  return $compressionResult;
+  $final_keywords = array();
+  foreach ($keywords as $keyword_det) {
+    if ($keyword_det[1] < $minWordOccurrences)
+      break;
+    array_push($final_keywords, $keyword_det[0]);
+  }
+  return $final_keywords;
 }
-$compression = checkCompression($url);
 
 
 
@@ -753,13 +828,81 @@ $compression = checkCompression($url);
 
 
 
+// function getNonModernImageURLs($xpath)
+// {
+//   // Create an array to store non-modern image URLs
+//   $nonModernImageURLs = [];
+
+//   // Get all image source attributes using XPath
+//   $imageSrcs = $xpath->evaluate('//img/@src');
+
+//   // Create a Guzzle HTTP client
+//   $client = new Client();
+
+//   // Check each image source for modern format
+//   foreach ($imageSrcs as $imageSrc) {
+//     $imageURL = $imageSrc->value;
+
+//     // Check if the image source is a base64-encoded image
+//     if (strpos($imageURL, 'data:image') === 0) {
+//       continue; // Skip base64-encoded images
+//     }
+
+//     // Skip if the image URL is empty
+//     if (empty($imageURL)) {
+//       continue;
+//     }
+
+//     try {
+//       // Send an HTTP request to the image URL
+//       $response = $client->head($imageURL, ['http_errors' => false]);
+
+//       // Get the response status code
+//       $statusCode = $response->getStatusCode();
+
+//       // Check if the response status code indicates success
+//       if ($statusCode >= 200 && $statusCode < 300) {
+//         // Check if the response Content-Type header indicates a modern image format
+//         $contentType = $response->getHeaderLine('Content-Type');
+//         if (strpos($contentType, 'image/webp') !== false || strpos($contentType, 'image/avif') !== false || strpos($contentType, 'image/heif') !== false || strpos($contentType, 'image/heic') !== false) {
+//           continue; // Skip modern image formats
+//         }
+//       } else {
+//         // Add the non-modern image URL to the array
+//         $nonModernImageURLs[] = $imageURL;
+//       }
+//     } catch (Exception $e) {
+//       // Add the non-modern image URL to the array if an exception occurs
+//       $nonModernImageURLs[] = $imageURL;
+//     }
+//   }
+
+//   return $nonModernImageURLs;
+// }
+
+// $nonModernImageFormat = getNonModernImageURLs($xpath);
 
 
 
+
+
+
+function isHSTSEnabled($url)
+{
+  $headers = get_headers($url, 1);
+
+  if (isset($headers['Strict-Transport-Security']) || isset($headers['strict-transport-security'])) {
+    return true;
+  }
+
+  return false;
+}
+
+$hsts = isHSTSEnabled($url);
 $starttime = microtime(true);
 $endtime = microtime(true);
 $executionTime = $endtime - $starttime;
-// echo "Execution time: " . $executionTime . " seconds\n";  
+// echo "Execution time: " . $executionTime . " seconds\n";
 
 
 
@@ -769,16 +912,21 @@ ob_end_flush();
 // Create the final response array
 $response = [
   'hasHttp2' => $hasHttp2,
+  'hsts' => $hsts,
+  'loadTime' => $loadtime,
+  // 'nonModernImageFormat' => $nonModernImageFormat,
+  'structuredData' => $structuredData,
+  'inlineCSS' => $inlineCSS,
   'plaintextEmails' => $plaintextEmails,
+  'socialMetaTags' => $socialMediaMetaTags,
   'hasFramesets' => $hasFramesets,
-  'compression' => $compression,
   'httpRequests' => $httpRequests,
   'ssl' => $sslInfo,
   'deprecatedTags' => $deprecatedTags,
   'socialMediaPresence' => $socialMediaProfiles,
   'wordCount' => $wordCount,
   // 'text' => $text,
-  'mostCommonKeywords' => $mostCommonKeyword,
+  // 'mostCommonKeywords' => $mostCommonKeyword,
   'url' => $url,
   'domain' => $domain,
   'serverSignature' => $serverSignature,

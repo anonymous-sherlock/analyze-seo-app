@@ -6,9 +6,6 @@
     <link rel="stylesheet" type="text/css" href="styles.css" />
   </head>
   <body>
-    <div class="loader">
-      
-    </div>
     <div class="container">
       <div class="hero">
         <h1>Webscrush Powerful SEO Tool</h1>
@@ -24,13 +21,18 @@
               type="text"
               id="urlInput"
               placeholder="Enter your website URL"
+              required
             />
             <button type="submit">Get Started</button>
           </div>
         </form>
       </div>
 
-
+      <!-- loader -->
+      <div class="loader-popup hidden">
+        <span class="loader"></span>
+        <span class="loader-text">Analyzing Website</span>
+      </div>
       <!-- report result  -->
       <div
         class="tool-results-wrapper result report-result hidden"
@@ -427,7 +429,7 @@
                     >
                   </div>
                 </div>
-                <div class="border-top p-3" bis_skin_checked="1">
+                <div class="border-top p-3" bis_skin_checked="1" csi-title>
                   <div class="row" bis_skin_checked="1">
                     <div class="col" bis_skin_checked="1">
                       <div class="row" bis_skin_checked="1">
@@ -442,6 +444,7 @@
                             >
                               <i
                                 class="an an-chack seo-icon seo-icon-success"
+                                info-icon
                               ></i>
                             </div>
                             <div class="fw-bold" bis_skin_checked="1">
@@ -450,8 +453,14 @@
                           </div>
                         </div>
                         <div class="col-12 col-lg-8" bis_skin_checked="1">
-                          <p>The webpage is using a good title tag.</p>
-                          <div class="alert alert-success" bis_skin_checked="1">
+                          <p info-message>
+                            The webpage is using a good title tag.
+                          </p>
+                          <div
+                            class="alert alert-success"
+                            bis_skin_checked="1"
+                            info-box
+                          >
                             <p class="mb-0">
                               <strong>Text:</strong>
                               <span class="site-title">
@@ -460,7 +469,7 @@
                             </p>
                             <p class="mb-0">
                               <strong>Length:</strong>
-                              <span class="title-length"> 52 characters</span>
+                              <span info-length>0 characters</span>
                             </p>
                           </div>
                         </div>
@@ -482,7 +491,11 @@
                     </div>
                   </div>
                 </div>
-                <div class="border-top p-3" bis_skin_checked="1">
+                <div
+                  class="border-top p-3"
+                  bis_skin_checked="1"
+                  csi-description
+                >
                   <div class="row" bis_skin_checked="1">
                     <div class="col" bis_skin_checked="1">
                       <div class="row" bis_skin_checked="1">
@@ -497,6 +510,7 @@
                             >
                               <i
                                 class="an an-triangle seo-icon seo-icon-danger"
+                                info-icon
                               ></i>
                             </div>
                             <div class="fw-bold" bis_skin_checked="1">
@@ -505,25 +519,23 @@
                           </div>
                         </div>
                         <div class="col-12 col-lg-8" bis_skin_checked="1">
-                          <p>
-                            This webpage has a meta description tag that is
-                            <strong>76 characters</strong> long. It is
-                            recommended to use well-written and engaging meta
-                            descriptions with a length between
-                            <strong
-                              >80 and 160 characters (including spaces)</strong
-                            >.
+                          <p info-message>
+                            This webpage has a meta description tag that
                           </p>
-                          <div class="alert alert-danger" bis_skin_checked="1">
+                          <div
+                            class="alert alert-success"
+                            bis_skin_checked="1"
+                            info-box
+                          >
                             <p class="mb-0">
                               <strong>Text:</strong>
-                              <span class="site-title">
+                              <span class="site-description">
                                 <!-- added later -->
                               </span>
                             </p>
                             <p class="mb-0">
                               <strong>Length:</strong>
-                              76 characters
+                              <span info-length>0 characters</span>
                             </p>
                           </div>
                         </div>
@@ -545,6 +557,7 @@
                     </div>
                   </div>
                 </div>
+
                 <div class="border-top p-3" bis_skin_checked="1">
                   <div class="row" bis_skin_checked="1">
                     <div class="col" bis_skin_checked="1">
@@ -5043,5 +5056,6 @@
 
     <script src="js/app.js" type="module"></script>
     <script src="script.js"></script>
+    <script src="analyzer.js"></script>
   </body>
 </html>

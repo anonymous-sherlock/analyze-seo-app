@@ -6,10 +6,12 @@ function showScreenshot(event) {
   const reportDate = document.getElementById("generated-report-date");
   reportDate.innerHTML = generateReportDate();
   const resultContainer = document.querySelector(".tool-results-wrapper");
-  const loader = document.querySelector(".loader"); // Select the loader element
+  const loader = document.querySelector(".loader-popup"); // Select the loader element
 
   // Hide the resultContainer and show the loader
-  resultContainer.classList.add("hidden");
+  resultContainer.classList.remove("hidden");
+  resultContainer.classList.add("show");
+  document.body.style.overflowY = "hidden";
   loader.classList.remove("hidden");
 
   // Add a small delay to allow the element to be displayed before applying animation
@@ -34,9 +36,11 @@ function showScreenshot(event) {
   webCapture.appendChild(img);
 
   // Hide the loader after the image is loaded
-  img.onload = () => {
+  img.onload = async () => {
     // Perform SEO analysis
-    performSEOAnalysis(url);
+    await performSEOAnalysis(url);
+    document.body.style.overflowY = "";
+    loader.classList.add("hidden");
   };
 }
 
@@ -86,12 +90,13 @@ async function performSEOAnalysis(url) {
       const analysisResult = await response.json();
       // Process the analysis result as needed
       fillData(analysisResult);
+      ErrorTracker(analysisResult);
     } else {
       throw new Error(`Error: ${response.status}`);
     }
   } catch (error) {
     // Handle errors
-    console.log(`An error occurred: ${error.message}`);
+    console.log(error);
   }
 }
 // format Page Size Bytes
@@ -230,8 +235,6 @@ function renderUnsafeLink(data) {
 }
 
 async function fillData(data) {
-  console.log(data);
-
   const siteURLElements = document.getElementsByClassName("site-url");
   const siteURLAltElements = document.getElementsByClassName("site-url-alt");
   const imagesWithoutAltAttr = document.getElementById("imagesWithoutAltAttr");
