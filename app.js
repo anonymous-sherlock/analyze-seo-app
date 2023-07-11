@@ -101,4 +101,9 @@ class ErrorTracker {
       this.updateUI(container, severity, length, message);
     }
   }
+
+  headingCheck(headings){
+    const container = document.querySelector("[csi-headings]");
+    
+  }
 }
