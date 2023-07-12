@@ -89,10 +89,19 @@ async function performSEOAnalysis(url) {
     if (response.ok) {
       const analysisResult = await response.json();
       // Process the analysis result as needed
-      fillData(analysisResult);
-      // ErrorTracker(analysisResult);
-      const errorTracker = new ErrorTracker(analysisResult);
-      errorTracker.analyze();
+      if (!analysisResult.error) {
+        fillData(analysisResult);
+        // ErrorTracker(analysisResult);
+        const errorTracker = new ErrorTracker(analysisResult);
+        errorTracker.analyze();
+      } else {
+        const toastError = new ToastError();
+        const keyValue = (input) =>
+          Object.entries(input).forEach(([key, value]) => {
+            toastError.ShowToast(key, value, "danger");
+          });
+        keyValue(analysisResult);
+      }
     } else {
       throw new Error(`Error: ${response.status}`);
     }
@@ -101,6 +110,7 @@ async function performSEOAnalysis(url) {
     console.log(error);
   }
 }
+
 // format Page Size Bytes
 function formatBytes(bytes) {
   if (bytes < 1024) {
@@ -193,7 +203,9 @@ async function renderTitle(data) {
 async function renderSPFRecord(data) {
   const { spfRecord } = data;
   const spfRecordElement = document.querySelector(".spf-record");
-  spfRecordElement.innerHTML = spfRecord;
+  if (spfRecord) {
+    spfRecordElement.innerHTML = spfRecord;
+  }
 }
 async function renderUrlRedirects(data) {
   const { url, redirects } = data;
@@ -208,7 +220,10 @@ function renderUnsafeLink(data) {
   const unsafeLinkContainer = document.getElementById("unsafe-link-container");
 
   const { unsafeLinks } = data;
-
+  if (!unsafeLinks || unsafeLinks.length === 0) {
+    unsafeLinkContainer.innerHTML = "";
+    return;
+  }
   const linkItems = unsafeLinks
     .map(
       (elem) => `
@@ -239,29 +254,25 @@ function renderUnsafeLink(data) {
 async function fillData(data) {
   const siteURLElements = document.getElementsByClassName("site-url");
   const siteURLAltElements = document.getElementsByClassName("site-url-alt");
-  const imagesWithoutAltAttr = document.getElementById("imagesWithoutAltAttr");
-  const totalImageCount = document.querySelector(".total-image-count");
   const pageSizeElements = document.querySelectorAll(".page-size");
   const siteLanguage = document.querySelector(".site-lang");
-  const siteIcon = document.querySelector(".site-icon");
-  const siteIconImg = document.querySelector(".site-icon-img");
 
-  siteIcon.innerHTML = data?.favicon;
-  siteIconImg.setAttribute("src", data?.favicon);
-  const missingAltImageCount = document.querySelectorAll(
-    ".missing-alt-image-count"
-  );
-
-  renderTitle(data);
-  renderDescription(data);
-  renderHeadings(data);
-  renderDescription(data);
-  renderSitemap(data);
-  renderSPFRecord(data);
-  renderUrlRedirects(data);
-  renderUnsafeLink(data);
-  renderHttpRequest(data);
-  renderDeprecatedTag(data);
+  try {
+    renderTitle(data);
+    renderDescription(data);
+    renderHeadings(data);
+    renderDescription(data);
+    renderSitemap(data);
+    renderSPFRecord(data);
+    renderUrlRedirects(data);
+    renderUnsafeLink(data);
+    renderHttpRequest(data);
+    renderDeprecatedTag(data);
+    renderImageWithoutAlt(data);
+    renderFavicon(data);
+  } catch (error) {
+    console.log(error);
+  }
 
   const inPageLinks = {
     "Internal Links": data.internalLinks,
@@ -269,17 +280,11 @@ async function fillData(data) {
   };
   renderInPageLink(inPageLinks);
 
-  totalImageCount.innerHTML = data?.totalImageCount;
   siteLanguage.innerHTML = data?.language;
 
   for (let i = 0; i < pageSizeElements.length; i++) {
     const pageSize = pageSizeElements[i];
     pageSize.innerHTML = formatBytes(data?.pageSize);
-  }
-
-  for (let i = 0; i < missingAltImageCount.length; i++) {
-    const missingAlt = missingAltImageCount[i];
-    missingAlt.innerHTML = data?.imagesWithoutAltText.length;
   }
 
   for (let i = 0; i < siteURLElements.length; i++) {
@@ -292,17 +297,27 @@ async function fillData(data) {
     const siteURLAltElement = siteURLAltElements[i];
     siteURLAltElement.innerHTML = data?.url;
   }
+}
+async function renderFavicon(data) {
+  const siteIcon = document.querySelector(".site-icon");
+  let siteIconImg = document.querySelector(".site-icon-img");
+  let faviconPreview = document.querySelector("[favicon-preview]");
 
-  let imagesWithoutAltHtml = "";
-  if (data?.imagesWithoutAltText) {
-    imagesWithoutAltHtml += '<ol class="mb-0 pb-2">';
-    data?.imagesWithoutAltText.forEach((image) => {
-      imagesWithoutAltHtml += `<li class="py-1 text-break"><a href="${image}" target="_blank" rel="noopener noreferrer">${image}</a></li>`;
-    });
-    imagesWithoutAltHtml += "</ol>";
+  if (data?.favicon) {
+    if (!siteIconImg) {
+      siteIconImg = document.createElement("img");
+      siteIconImg.classList.add("site-icon-img");
+      siteIconImg.style.width = "16px";
+      faviconPreview.prepend(siteIconImg);
+    }
+    siteIconImg.setAttribute("src", data.favicon);
+  } else {
+    if (siteIconImg) {
+      siteIconImg.remove();
+    }
   }
 
-  imagesWithoutAltAttr.innerHTML = imagesWithoutAltHtml;
+  siteIcon.innerHTML = data?.favicon;
 }
 
 async function renderSitemap(data) {
@@ -345,6 +360,33 @@ async function renderSitemap(data) {
     sitemap.innerHTML = sitemapHTML;
   } else {
     checkSitemap.innerHTML = "No Sitemap Found.";
+  }
+}
+
+async function renderImageWithoutAlt(data) {
+  const imagesWithoutAltAttr = document.getElementById("imagesWithoutAltAttr");
+  const missingAltCount = document.querySelector(".missing-alt-image-count");
+  const imageList = document.querySelector("[img-alt-missing-list]");
+
+  let imagesWithoutAltHtml = "";
+  missingAltCount.innerHTML = data?.imagesWithoutAltText.length || 0;
+
+  if (!data?.imagesWithoutAltText || data.imagesWithoutAltText.length === 0) {
+    if (imagesWithoutAltAttr) {
+      imageList.style.display = "none";
+      imagesWithoutAltAttr.innerHTML = ""; // Clear the content
+    }
+  } else {
+    imageList.style.display = "block";
+    imagesWithoutAltHtml += '<ol class="mb-0 pb-2">';
+    data?.imagesWithoutAltText.forEach((image) => {
+      imagesWithoutAltHtml += `<li class="py-1 text-break"><a href="${image}" target="_blank" rel="noopener noreferrer">${image}</a></li>`;
+    });
+    imagesWithoutAltHtml += "</ol>";
+
+    if (imagesWithoutAltAttr) {
+      imagesWithoutAltAttr.innerHTML = imagesWithoutAltHtml;
+    }
   }
 }
 
@@ -461,7 +503,7 @@ function renderHttpRequest(data) {
     // Create the <span> element with class "badge badge-primary"
     const span = document.createElement("span");
     span.classList.add("badge", "badge-primary");
-    span.textContent = resourceData.length;
+    span.textContent = resourceData?.length;
     div1.appendChild(span);
 
     li.appendChild(div1);
@@ -552,4 +594,26 @@ async function renderDeprecatedTag(data) {
   }
 
   deprecatedTagsWrapper.appendChild(deprecatedTagsContainer);
+}
+
+// toast error
+
+class ToastError {
+  ShowToast(name, text, color) {
+    const toastContainer = document.querySelector(".toast-container");
+    const toast = document.querySelector(".toast");
+    if (toastContainer) {
+      toastContainer.innerHTML = `
+    <div class="toast toast-${color} show" role="alert" aria-live="assertive" aria-atomic="true" bis_skin_checked="1">
+      <div class="d-flex" bis_skin_checked="1">
+        <div class="toast-body" bis_skin_checked="1">
+         <span>${name}</span> : 
+          ${text}
+        </div>
+        <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+    </div>
+    `;
+    }
+  }
 }

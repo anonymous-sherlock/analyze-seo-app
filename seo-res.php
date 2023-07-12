@@ -253,11 +253,15 @@ function hasMetaTag($xpathGlobal, $attribute, $values)
   $xpath = $xpathGlobal;
   $query = "//meta[@{$attribute}='robots']";
   $metaTags = $xpath->query($query);
-
+  $noIndexContents = [];
   if ($metaTags->length > 0) {
     $content = $metaTags->item(0)->getAttribute('content');
     foreach ($values as $value) {
       if (strpos($content, $value) !== false) {
+        if ($value === "noindex") {
+          $noIndexContents[] = $content;
+          return $noIndexContents;
+        }
         return true; // Meta tag exists
       }
     }
@@ -662,19 +666,22 @@ function checkURLRedirects($url)
   curl_setopt($ch, CURLOPT_NOBODY, true);
   curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
   curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-
   $response = curl_exec($ch);
-
   if ($response === false) {
     // Error occurred while making the request
+    curl_close($ch);
     return false;
   }
-
   $redirectUrl = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
   curl_close($ch);
-
-  return $redirectUrl;
+  
+  if ($redirectUrl !== $url && rtrim($redirectUrl, '/') === $url) {
+    return $redirectUrl;
+  } else {
+    return false;
+  }
 }
+
 // Extract external links with link text
 $externalLinks = [];
 $externalLinkNodes = $xpath->query('//a[not(starts-with(@href, "/")) and not(starts-with(@href, "#"))]');
@@ -881,10 +888,6 @@ function extract_keywords($str, $minWordLen = 3, $minWordOccurrences = 2, $asArr
 // }
 
 // $nonModernImageFormat = getNonModernImageURLs($xpath);
-
-
-
-
 
 
 function isHSTSEnabled($url)
