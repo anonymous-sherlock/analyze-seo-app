@@ -601,7 +601,7 @@ async function renderDeprecatedTag(data) {
 class ToastError {
   ShowToast(name, text, color) {
     const toastContainer = document.querySelector(".toast-container");
-    const toast = document.querySelector(".toast");
+    const visible = false
     if (toastContainer) {
       toastContainer.innerHTML = `
     <div class="toast toast-${color} show" role="alert" aria-live="assertive" aria-atomic="true" bis_skin_checked="1">
@@ -615,5 +615,9 @@ class ToastError {
     </div>
     `;
     }
+
+ setTimeout(() => {
+  
+ }, 5000);
   }
 }
