@@ -5,8 +5,6 @@ use GuzzleHttp\Client;
 use GuzzleHttp\Promise;
 use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\Promise\Utils;
-use Spatie\Crawler\Crawler;
-use Spatie\Crawler\CrawlObservers\SitemapObserver;
 use DonatelloZa\RakePlus\RakePlus;
 
 // Initialize the GuzzleHttp client outside the function for connection pooling
@@ -19,7 +17,7 @@ ini_set('display_errors', 1);
 $url = $_GET['url'];
 // Validate and sanitize the URL input
 if (!filter_var($url, FILTER_VALIDATE_URL)) {
-  echo json_encode(['error' => 'Please Enter a Valid URL.']);
+  echo json_encode(['error' => 'Invalid URL']);
   exit;
 }
 
@@ -598,21 +596,6 @@ function isHSTSEnabled($url)
 
   return false;
 }
-function isNonSeoFriendlyUrl($url)
-{
-  // Remove the protocol and www prefix
-  $url = preg_replace('/^https?:\/\/(www\.)?/', '', $url);
-
-  // Check for non-SEO friendly patterns
-  // '/\b\d{8,}\b/'              Numeric strings with 8 or more digits (e.g., product IDs, timestamps)
-  // '/[^a-zA-Z0-9\-\/_.]/'      Non-alphanumeric characters excluding allowed characters
-  // '/\d+[A-Za-z]+\d+/',        Alphanumeric strings with numbers and letters combined (e.g., abcd1234)
-  // '/[A-Za-z]+\d+[A-Za-z]+/'   Alphanumeric strings with letters and numbers combined (e.g., a1b2c3)
-
-  $pattern = '/\b\d{8,}\b|[^a-zA-Z0-9\-\/_.]|\d+[A-Za-z]+\d+|[A-Za-z]+\d+[A-Za-z]+/';
-
-  return preg_match($pattern, $url) === 1;
-}
 
 
 // variable for function 
@@ -645,74 +628,7 @@ $structuredData = extractStructuredData($xpath);
 $hsts = isHSTSEnabled($url);
 
 
-// extract internal and external links 
-$nonSEOFriendlyLinks = [];
-$internalLinks = [];
-$internalLinkUrls = [];
-$externalLinks = [];
-$addedLinks = [];
-$normalizedOriginalUrlHost = strtolower(parse_url($url, PHP_URL_HOST));
-$linkNodes = $xpath->query('//a[not(starts-with(@href, "#"))]');
-foreach ($linkNodes as $linkNode) {
-  $href = $linkNode->getAttribute('href');
-  $text = trim(str_replace(["\r", "\n", "\t"], '', $linkNode->textContent));
-
-  if (strpos($href, 'mailto:') === 0 || strpos($href, 'tel:') === 0) {
-    continue;
-  }
-
-  if (!empty($href) && !empty($text)) {
-    if (filter_var($href, FILTER_VALIDATE_URL)) {
-      $parsedHref = parse_url($href);
-      $parsedUrlHost = strtolower($parsedHref['host'] ?? '');
-
-      if ($parsedUrlHost === $normalizedOriginalUrlHost) {
-        $fullUrl = $href;
-        $lowercaseUrl = strtolower($fullUrl);
-
-        if (!isset($internalLinkUrls[$lowercaseUrl])) {
-          $internalLinks[] = [
-            'url' => $fullUrl,
-            'text' => $text
-          ];
-
-          $internalLinkUrls[$lowercaseUrl] = true;
-        }
-      } else {
-        $fullUrl = rtrim($href, '/');
-        $lowercaseUrl = strtolower($fullUrl);
-
-        if (!isset($addedLinks[$lowercaseUrl])) {
-          $externalLinks[] = [
-            'url' => $fullUrl,
-            'text' => $text
-          ];
-
-          $addedLinks[$lowercaseUrl] = true;
-        }
-      }
-    } else {
-      $fullUrl = rtrim($url, '/') . '/' . ltrim($href, '/');
-      $lowercaseUrl = strtolower($fullUrl);
-
-      if (!isset($internalLinkUrls[$lowercaseUrl])) {
-        $internalLinks[] = [
-          'url' => $fullUrl,
-          'text' => $text
-        ];
-
-        $internalLinkUrls[$lowercaseUrl] = true;
-      }
-    }
-  }
-}
-// filter out non seo friendly link from internal array
-$nonSEOFriendlyLinks = array_filter($internalLinks, function ($link) {
-  return isNonSeoFriendlyUrl($link['url']);
-});
-$nonSEOFriendlyLinks = $nonSEOFriendlyLinks ? array_column($nonSEOFriendlyLinks, 'url') : false;
-
-
+// my new code
 
 // Function to check for URL redirects and return the redirection path
 function checkURLRedirects($url)
@@ -738,29 +654,49 @@ function checkURLRedirects($url)
   }
 }
 
+// Extract external links with link text
+$externalLinks = [];
+$externalLinkNodes = $xpath->query('//a[not(starts-with(@href, "/")) and not(starts-with(@href, "#"))]');
+$addedLinks = [];
+foreach ($externalLinkNodes as $linkNode) {
+  $href = $linkNode->getAttribute('href');
+  $text = trim(preg_replace('/\s+/', ' ', $linkNode->textContent));
 
+  if (empty($href) || empty($text)) {
+    continue; // Skip if href or text is empty
+  }
 
+  $linkParts = parse_url($href);
 
+  // Skip if URL parsing failed
+  if (!$linkParts || !isset($linkParts['host'])) {
+    continue;
+  }
+  $linkDomain = $linkParts['host'];
 
+  // Normalize the link domain and current domain for comparison
+  $normalizedLinkDomain = rtrim(strtolower($linkDomain), '/');
+  $normalizedCurrentDomain = rtrim(strtolower($domain), '/');
 
+  if ($normalizedLinkDomain === $normalizedCurrentDomain) {
+    continue; // Skip if link belongs to the same domain
+  }
 
+  $href = rtrim($href, '/');
 
+  // Check if the link is already added to internal or external links
+  if (isset($addedLinks[$href])) {
+    continue; // Skip if link is a duplicate
+  }
 
+  $addedLinks[$href] = true;
 
+  $externalLinks[] = [
+    'url' => $href,
+    'text' => $text
+  ];
+}
 
-
-
-
-
-
-// Extract internal links with link text
-$starttime = microtime(true);
-
-
-
-$endtime = microtime(true);
-$executionTime = $endtime - $starttime;
-// echo "Execution time: " . $executionTime . " seconds\n";
 
 
 
@@ -811,6 +747,93 @@ $wordCount = str_word_count($text);
 
 
 
+
+
+
+
+
+
+$starttime = microtime(true);
+// Extract internal links with link text
+$nonSEOFriendlyLinks = [];
+$internalLinks = [];
+$internalLinkUrls = [];
+$normalizedOriginalUrlHost = strtolower(parse_url($url, PHP_URL_HOST));
+$base = rtrim($url, '/');
+
+$internalLinkNodes = $xpath->query('//a[not(starts-with(@href, "#"))]');
+foreach ($internalLinkNodes as $linkNode) {
+  $href = $linkNode->getAttribute('href');
+  $text = trim(str_replace(["\r", "\n", "\t"], '', $linkNode->textContent));
+  if (strpos($href, 'mailto:') === 0 || strpos($href, 'tel:') === 0) {
+    continue;
+  }
+  if (!empty($href) && !empty($text)) {
+    if (filter_var($href, FILTER_VALIDATE_URL)) {
+      $parsedHref = parse_url($href);
+      $parsedUrlHost = strtolower(isset($parsedHref['host']) ? $parsedHref['host'] : '');
+
+      if ($parsedUrlHost === $normalizedOriginalUrlHost) {
+        $fullUrl = $href;
+      } else {
+        continue; // Skip external URLs
+      }
+    } else {
+      $fullUrl = $base . '/' . ltrim($href, '/');
+    }
+
+    $lowercaseUrl = strtolower($fullUrl);
+
+    if (!isset($internalLinkUrls[$lowercaseUrl])) {
+      $internalLinks[] = [
+        'url' => $fullUrl,
+        'text' => $text
+      ];
+
+      $internalLinkUrls[$lowercaseUrl] = true;
+    }
+  }
+}
+
+
+
+function isNonSeoFriendlyUrl($url)
+{
+  // Remove the protocol and www prefix
+  $url = preg_replace('/^https?:\/\/(www\.)?/', '', $url);
+
+  // Check for non-SEO friendly patterns
+  $patterns = [
+    '/\b\d{8,}\b/',
+    // Numeric strings with 8 or more digits (e.g., product IDs, timestamps)
+    '/[^a-zA-Z0-9\-\/_.]/',
+    // Non-alphanumeric characters excluding allowed characters
+    '/\d+[A-Za-z]+\d+/',
+    // Alphanumeric strings with numbers and letters combined (e.g., abcd1234)
+    '/[A-Za-z]+\d+[A-Za-z]+/' // Alphanumeric strings with letters and numbers combined (e.g., a1b2c3)
+  ];
+
+  foreach ($patterns as $pattern) {
+    if (preg_match($pattern, $url)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+foreach ($internalLinks as $link) {
+  $url = $link['url'];
+  if (isNonSeoFriendlyUrl($url)) {
+    $nonSEOFriendlyLinks[] = $url;
+  }
+}
+
+$endtime = microtime(true);
+$executionTime = $endtime - $starttime;
+echo "Execution time: " . $executionTime . " seconds\n";
+
+
+
 // End output buffering
 ob_end_flush();
 
@@ -820,7 +843,6 @@ $response = [
   'hsts' => $hsts,
   'nonSEOFriendlyLinks' => $nonSEOFriendlyLinks,
   'internalLinks' => $internalLinks,
-  'externalLinks' => $externalLinks,
   'loadTime' => $loadtime,
   'structuredData' => $structuredData,
   'plaintextEmails' => $plaintextEmails,
@@ -857,6 +879,7 @@ $response = [
   'headings' => $headings,
   'totalImageCount' => $totalImageCount,
   'imagesWithoutAltText' => $imagesWithoutAltText,
+  'externalLinks' => $externalLinks
 ];
 
 // Output the response as JSON

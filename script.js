@@ -98,7 +98,7 @@ async function performSEOAnalysis(url) {
         const toastError = new ToastError();
         const keyValue = (input) =>
           Object.entries(input).forEach(([key, value]) => {
-            toastError.ShowToast(key, value, "danger");
+            toastError.ShowToast(value, "danger", 5);
           });
         keyValue(analysisResult);
       }
@@ -599,25 +599,29 @@ async function renderDeprecatedTag(data) {
 // toast error
 
 class ToastError {
-  ShowToast(name, text, color) {
+  ShowToast(text, color, sec) {
     const toastContainer = document.querySelector(".toast-container");
-    const visible = false
     if (toastContainer) {
-      toastContainer.innerHTML = `
-    <div class="toast toast-${color} show" role="alert" aria-live="assertive" aria-atomic="true" bis_skin_checked="1">
-      <div class="d-flex" bis_skin_checked="1">
-        <div class="toast-body" bis_skin_checked="1">
-         <span>${name}</span> : 
-          ${text}
-        </div>
-        <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-      </div>
-    </div>
-    `;
-    }
+      const toast = document.createElement("div");
+      toast.className = `toast toast-${color} show`;
+      toast.setAttribute("role", "alert");
+      toast.setAttribute("aria-live", "assertive");
+      toast.setAttribute("aria-atomic", "true");
 
- setTimeout(() => {
-  
- }, 5000);
+      toast.innerHTML = `
+        <div class="d-flex">
+          <div class="toast-body">
+            <span>${text}</span>
+            </div>
+          </div>
+          <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+      `;
+
+      toastContainer.appendChild(toast);
+      setTimeout(() => {
+        toast.remove();
+      }, Number(sec) * 1000);
+    }
   }
 }

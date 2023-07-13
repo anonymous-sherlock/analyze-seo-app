@@ -10,118 +10,115 @@ class ErrorTracker {
   }
 
   analyze() {
-    // SEO Check
-    this.titleCheck(this.data?.title, "SEO");
-    this.descriptionCheck(this.data?.description, "SEO");
-    this.headingCheck(this.data?.headings, "SEO");
-    this.custom404PageCheck(this.data?.hasCustom404Page, "SEO");
-    this.imageAltTextCheck(
-      this.data?.imagesWithoutAltText,
-      this.data?.totalImageCount,
-      "SEO"
-    );
-
-    this.languageCheck(this.data?.language, "SEO");
-    this.faviconCheck(this.data?.favicon, "SEO");
-    this.robotsTxtCheck(this.data?.hasRobotsTxt, "SEO");
-    this.noFollowTagCheck(this.data?.hasNoFollow, "SEO");
-    this.noIndexTagCheck(this.data?.hasNoIndex, "SEO");
-    this.spfRecordCheck(this.data?.spfRecord, "SEO");
-
-    // Add more analysis checks if needed
-    console.log(this.categories);
+    this.analyzeSEO();
   }
-  errorCount() {
-    const SEO = document.getElementById("seo");
-    const speedOptimizations = document.getElementById("performance");
-    const serverAndSecurity = document.getElementById("security");
-    const advance = document.getElementById("advance");
 
-    const seoMediumCount = this.issues?.SEO?.medium || 0;
-    const seoHighCount = this.issues?.SEO?.high || 0;
+  analyzeSEO() {
+    const badge = document.querySelector("#seo");
+    const cat = "SEO";
 
-    const badgesHtml = `
-      <div class="report-badges d-flex" bis_skin_checked="1">
-        ${
-          seoMediumCount > 0
-            ? `<span class="badge badge-warning ms-1">${seoMediumCount} Medium Issue${
-                seoMediumCount > 1 ? "s" : ""
-              }</span>`
-            : ""
+    this.checkTitle(cat);
+    this.checkDescription(cat);
+    this.checkHeadings(cat);
+    this.checkCustom404Page(cat);
+    this.checkImageAltText(cat);
+    this.checkLanguage(cat);
+    this.checkFavicon(cat);
+    this.checkRobotsTxt(cat);
+    this.checkNoFollowTag(cat);
+    this.checkNoIndexTag(cat);
+    this.checkSPFRecord(cat);
+
+    this.renderBadge(badge, this.categories.SEO);
+  }
+
+  renderBadge(selector, cat) {
+    const reportBadge = selector.querySelector(".report-badges");
+
+    // Clear existing badges
+    reportBadge.innerHTML = "";
+
+    // Map the category names to their corresponding labels and order
+    const categoryData = [
+      { name: "danger", label: "High Issue", order: 1 },
+      { name: "warning", label: "Medium Issue", order: 2 },
+      { name: "low", label: "Low Issue", order: 3 },
+      { name: "success", label: "Test Passed", order: 4 },
+    ];
+
+    // Sort the categories based on the specified order
+    const sortedCategories = categoryData.sort((a, b) => a.order - b.order);
+
+    // Iterate over the sorted categories
+    for (const category of sortedCategories) {
+      const severity = category.name;
+      const count = cat[severity];
+
+      // Check if the category is present in the cat object and count is greater than 0
+      if (count !== undefined && count > 0) {
+        // Create the badge element
+        const badge = document.createElement("span");
+        badge.classList.add("badge", `badge-${severity}`, "ms-1");
+
+        // Determine the label based on the severity
+        const label = category.label;
+
+        // Determine the text based on the count
+        let text = `${count} ${label}`;
+        if (count === 1) {
+          // Remove the 's' from the text for singular case
+          text = text.replace(" Issues", " Issue");
         }
-        ${
-          seoHighCount > 0
-            ? `<span class="badge badge-info ms-1">${seoHighCount} High Issue${
-                seoHighCount > 1 ? "s" : ""
-              }</span>`
-            : ""
+
+        badge.textContent = text;
+
+        // Append the badge to the report badge container based on the order
+        const existingBadges = reportBadge.querySelectorAll(".badge");
+        const insertBeforeBadge = Array.from(existingBadges).find((b) => {
+          const badgeOrder = categoryData.find(
+            (c) => c.name === b.classList[1]
+          )?.order;
+          return badgeOrder > category.order;
+        });
+
+        if (insertBeforeBadge) {
+          reportBadge.insertBefore(badge, insertBeforeBadge);
+        } else {
+          reportBadge.appendChild(badge);
         }
-      </div>
-    `;
-
-    // Render the badges for the SEO section
-    SEO.innerHTML = badgesHtml;
-  }
-
-  // update errors count
-  updateCategoryCounts(category, severity) {
-    if (!this.categories[category]) {
-      this.categories[category] = {};
+      }
     }
-    if (!this.categories[category][severity]) {
-      this.categories[category][severity] = 0;
-    }
-    this.categories[category][severity]++;
-  }
-  updateIssueCounts(category, severity) {
-    this.updateCategoryCounts(category, severity);
   }
 
-  updateUI(container, severity, message, length, category) {
+  updateUIElement(container, severity, message, length, category) {
     const infoText = container.querySelector("[info-message]");
     const icon = container.querySelector("[info-icon]");
     const box = container.querySelector("[info-box]");
     const infoLength = container.querySelector("[info-length]");
-
     icon.className = "";
-    box.className = "";
 
-    if (severity === "success") {
-      icon.classList.add("an", "an-chack", "seo-icon", "seo-icon-success");
-      this.updateIssueCounts(category, "passed");
-    } else if (severity === "warning") {
-      icon.classList.add("an", "an-square", "seo-icon", "seo-icon-warning");
-      this.updateIssueCounts(category, "medium");
-    } else if (severity === "danger") {
-      icon.classList.add("an", "an-triangle", "seo-icon", "seo-icon-danger");
-      this.updateIssueCounts(category, "high");
-    } else {
-      icon.classList.add("an", "an-circle", "seo-icon", "seo-icon-info");
-      this.updateIssueCounts(category, "low");
+    const iconClasses = {
+      success: "an an-chack seo-icon seo-icon-success",
+      warning: "an an-square seo-icon seo-icon-warning",
+      danger: "an an-triangle seo-icon seo-icon-danger",
+      info: "an an-circle seo-icon seo-icon-info",
+    };
+    icon.className = iconClasses[severity];
+    if (box) {
+      box.className = "";
+      box.style.display = length ? "block" : "none";
+      infoLength.innerHTML = `${length || 0} Characters`;
+      box.classList.add("alert", `alert-${severity}`);
     }
-
     infoText.innerHTML = message;
 
-    if (length) {
-      infoLength.innerHTML = `${length} Characters`;
-      box.style.display = "block";
-    } else {
-      infoLength.innerHTML = "0 Characters";
-      box.style.display = "none";
-    }
+    this.updateCategoryCounts(category, severity);
+  }
 
-    if (box) {
-      box.classList.add("alert");
-      if (severity === "success") {
-        box.classList.add("alert-success");
-      } else if (severity === "warning") {
-        box.classList.add("alert-warning");
-      } else if (severity === "danger") {
-        box.classList.add("alert-danger");
-      } else {
-        box.classList.add("alert-info");
-      }
-    }
+  updateCategoryCounts(category, severity) {
+    this.categories[category] = this.categories[category] || {};
+    this.categories[category][severity] =
+      (this.categories[category][severity] || 0) + 1;
   }
 
   checkLength(length, successMin, successMax, warningMin, warningMax) {
@@ -134,18 +131,18 @@ class ErrorTracker {
     }
   }
 
-  titleCheck(title, category) {
+  checkTitle(cat) {
     const container = document.querySelector("[csi-title]");
-    const length = title ? title.length : 0;
-
+    const title = this.data?.title || "";
+    const length = title.length;
     const severity = this.checkLength(length, 45, 60, 25, 45);
 
     if (!title) {
-      this.updateUI(
+      this.updateUIElement(
         container,
         "danger",
         "This <strong>webpage lacks a title tag!</strong> Including a title tag is crucial as it provides a concise overview of the page for search engines.",
-        category
+        null
       );
     } else {
       let message = `The webpage is using a title tag with a length of <strong>${length} characters.</strong>`;
@@ -156,21 +153,22 @@ class ErrorTracker {
         message += ` It is recommended to use well-written and engaging titles with a length between <strong>45 - 60 characters</strong>.`;
       }
 
-      this.updateUI(container, severity, message, length, category);
+      this.updateUIElement(container, severity, message, length, cat);
     }
   }
 
-  descriptionCheck(description, category) {
+  checkDescription(cat) {
     const container = document.querySelector("[csi-description]");
-    const length = description ? description.length : 0;
-
+    const description = this.data?.description || "";
+    const length = description.length;
     const severity = this.checkLength(length, 120, 160, 80, 120);
-
     if (!description) {
-      this.updateUI(
+      this.updateUIElement(
         container,
         "danger",
-        "This webpage is <strong>missing a meta description tag</strong>! It is important to include this tag in order to provide a brief summary of the page for search engines. A well-written and enticing meta description can also increase the number of clicks on your site in search engine results."
+        "This webpage is <strong>missing a meta description tag</strong>! It is important to include this tag in order to provide a brief summary of the page for search engines. A well-written and enticing meta description can also increase the number of clicks on your site in search engine results.",
+        null,
+        cat
       );
     } else {
       let message = `The webpage has a meta description tag with a length of <strong>${length} characters.</strong>`;
@@ -181,191 +179,147 @@ class ErrorTracker {
         message += ` It is recommended to use well-written and engaging meta descriptions with a length between <strong>80 and 160 characters (including spaces)</strong>.`;
       }
 
-      this.updateUI(container, severity, message, length, category);
+      this.updateUIElement(container, severity, message, length, cat);
     }
   }
 
-  headingCheck(headings, category) {
+  checkHeadings(cat) {
     const container = document.querySelector("[csi-headings]");
-    const icon = container.querySelector("[info-icon]");
-    const infoMessage = container.querySelector("[info-message]");
-    infoMessage.innerHTML = "";
+    const headings = this.data?.headings || {};
+    const h1Count = headings.h1?.length || 0;
+    const h2Count = headings.h2?.length || 0;
+    const h3Count = headings.h3?.length || 0;
+    let severity = "success";
+    let message =
+      "All heading tags are <strong>well-structured and properly used</strong>.";
 
-    const h1Count = headings?.h1.length || 0;
-    const h2Count = headings?.h2.length || 0;
-    const h3Count = headings?.h3.length || 0;
-
-    icon.className = "";
-
-    if (h1Count > 1) {
-      infoMessage.innerHTML =
+    if (h1Count > 0) {
+      message =
         "<strong>Multiple h1 tags found</strong> on the webpage. It is recommended to have <strong>only one h1 tag</strong> for proper heading structure.";
-      icon.classList.add("an", "an-triangle", "seo-icon", "seo-icon-danger");
-      this.updateIssueCounts(category, "high");
+      severity = "danger";
     } else if (h1Count === 0) {
-      infoMessage.innerHTML =
+      message =
         "<strong>No h1 tag found on the webpage</strong>. It is recommended to <strong>include an h1 tag</strong> to provide a clear and descriptive heading for search engines.";
-      icon.classList.add("an", "an-triangle", "seo-icon", "seo-icon-danger");
-      this.updateIssueCounts(category, "high");
+      severity = "danger";
     } else if (h2Count === 0) {
-      infoMessage.innerHTML =
+      message =
         "<strong>No h2 tag found on the webpage</strong>. It is recommended to <strong>include an h2 tag</strong> for better organization and hierarchical structure.";
-      icon.classList.add("an", "an-square", "seo-icon", "seo-icon-warning");
-      this.updateIssueCounts(category, "medium");
+      severity = "warning";
     } else if (h3Count === 0) {
-      infoMessage.innerHTML =
+      message =
         "<strong>No h3 tag found on the webpage</strong>. Consider using h3 tags to provide subheadings and further organize your content.";
-      icon.classList.add("an", "an-circle", "seo-icon", "seo-icon-info");
-      this.updateIssueCounts(category, "low");
-    } else {
-      infoMessage.innerHTML =
-        "All heading tags are <strong>well-structured and properly used</strong>.";
-      icon.classList.add("an", "an-chack", "seo-icon", "seo-icon-success");
-      this.updateIssueCounts(category, "passed");
+      severity = "info";
     }
+
+    this.updateUIElement(container, severity, message, null, cat);
   }
 
-  custom404PageCheck(custom404Page, category) {
+  checkCustom404Page(cat) {
     const container = document.querySelector("[csi-404-page]");
-    const icon = container.querySelector("[info-icon]");
-    const infoMessage = container.querySelector("[info-message]");
-    infoMessage.innerHTML = "";
+    const custom404Page = this.data?.hasCustom404Page || false;
 
-    icon.className = "";
+    const severity = custom404Page ? "success" : "danger";
+    const message = custom404Page
+      ? "This website <strong>has a custom 404 error page</strong>. It is recommended to have a custom 404 error page to improve the user experience for your website by letting users know that only a specific page is missing or broken (not the entire site). You can also provide helpful links, the opportunity to report bugs, and potentially track the source of broken links."
+      : "This website <strong>does not have a custom 404 error page</strong>. It is recommended to create a custom 404 error page to improve the user experience and provide helpful information to visitors when they encounter broken or missing pages.";
 
-    if (custom404Page) {
-      infoMessage.innerHTML =
-        "This website <strong>has a custom 404 error page</strong>. It is recommended to have a custom 404 error page to improve the user experience for your website by letting users know that only a specific page is missing or broken (not the entire site). You can also provide helpful links, the opportunity to report bugs, and potentially track the source of broken links.";
-      icon.classList.add("an", "an-chack", "seo-icon", "seo-icon-success");
-      this.updateIssueCounts(category, "passed");
-    } else {
-      infoMessage.innerHTML =
-        "This website <strong>does not have a custom 404 error page</strong>. It is recommended to create a custom 404 error page to improve the user experience and provide helpful information to visitors when they encounter broken or missing pages.";
-      icon.classList.add("an", "an-triangle", "seo-icon", "seo-icon-danger");
-      this.updateIssueCounts(category, "high");
-    }
+    this.updateUIElement(container, severity, message, null, cat);
   }
 
-  imageAltTextCheck(imagesWithoutAltText, totalImageCount, category) {
+  checkImageAltText(cat) {
     const container = document.querySelector("[csi-image-alt-text]");
-    const icon = container.querySelector("[info-icon]");
-    const infoMessage = container.querySelector("[info-message]");
-    icon.className = "";
+    const imagesWithoutAltText = this.data?.imagesWithoutAltText || [];
+    const totalImageCount = this.data?.totalImageCount || 0;
+    const imagesWithoutAltTextCount = imagesWithoutAltText.length;
 
-    if (!imagesWithoutAltText.length) {
-      infoMessage.innerHTML = `All images on the webpage <strong>have proper "alt" text</strong>, enhancing both accessibility and SEO optimization.`;
-      icon.classList.add("an", "an-chack", "seo-icon", "seo-icon-success");
-      this.updateIssueCounts(category, "high");
-    } else if (imagesWithoutAltText.length < 2) {
-      infoMessage.innerHTML = `This webpage is using ${totalImageCount} images and <strong>${imagesWithoutAltText.length} tags are empty or missing "alt" attribute!</strong>. It is recommended to provide descriptive "alt" text for better accessibility and SEO optimization.`;
-      icon.classList.add("an", "an-circle", "seo-icon", "seo-icon-info");
-      this.updateIssueCounts(category, "low");
-    } else if (imagesWithoutAltText.length < 5) {
-      infoMessage.innerHTML = `This webpage is using ${totalImageCount} images and <strong>${imagesWithoutAltText.length} tags are empty or missing "alt" attribute!</strong>. It is important to add descriptive "alt" text to improve accessibility and SEO optimization.`;
-      icon.classList.add("an", "an-square", "seo-icon", "seo-icon-warning");
-      this.updateIssueCounts(category, "medium");
-    } else {
-      infoMessage.innerHTML = `
-      This webpage is using ${totalImageCount} "img" tags with <strong>${imagesWithoutAltText.length} tags are empty or missing "alt" attribute!</strong>. Adding descriptive "alt" text to these images is crucial for accessibility and SEO optimization.`;
-      icon.classList.add("an", "an-triangle", "seo-icon", "seo-icon-danger");
-      this.updateIssueCounts(category, "high");
+    let severity = "success";
+    let message = `All images on the webpage <strong>have proper "alt" text</strong>, enhancing both accessibility and SEO optimization.`;
+
+    if (imagesWithoutAltTextCount > 0) {
+      if (imagesWithoutAltTextCount < 2) {
+        message = `This webpage is using ${totalImageCount} images and <strong>${imagesWithoutAltTextCount} tag is empty or missing "alt" attribute!</strong>. It is recommended to provide descriptive "alt" text for better accessibility and SEO optimization.`;
+        severity = "low";
+      } else if (imagesWithoutAltTextCount < 5) {
+        message = `This webpage is using ${totalImageCount} images and <strong>${imagesWithoutAltTextCount} tags are empty or missing "alt" attribute!</strong>. It is important to add descriptive "alt" text to improve accessibility and SEO optimization.`;
+        severity = "warning";
+      } else {
+        message = `This webpage is using ${totalImageCount} "img" tags with <strong>${imagesWithoutAltTextCount} tags are empty or missing "alt" attribute!</strong>. Adding descriptive "alt" text to these images is crucial for accessibility and SEO optimization.`;
+        severity = "danger";
+      }
     }
+
+    this.updateUIElement(container, severity, message, null, cat);
   }
 
-  languageCheck(language, category) {
+  checkLanguage(cat) {
     const container = document.querySelector("[csi-language]");
-    const icon = container.querySelector("[info-icon]");
-    const infoMessage = container.querySelector("[info-message]");
-    icon.className = "";
+    const language = this.data?.language || "";
 
-    if (language) {
-      infoMessage.innerHTML = `The <strong>lang</strong> attribute is present in the HTML tag with a value of`;
-      icon.classList.add("an", "an-chack", "seo-icon", "seo-icon-success");
-      this.updateIssueCounts(category, "passed");
-    } else {
-      infoMessage.innerHTML = `This webpage has not language declared. It is recommended to include the <code>lang</code> attribute to specify the language of the webpage.`;
-      icon.classList.add("an", "an-square", "seo-icon", "seo-icon-warning");
-      this.updateIssueCounts(category, "medium");
-    }
+    const severity = language ? "success" : "warning";
+    const message = language
+      ? `The <strong>lang</strong> attribute is present in the HTML tag with a value of "${language}".`
+      : `This webpage has not language declared. It is recommended to include the <code>lang</code> attribute to specify the language of the webpage.`;
+
+    this.updateUIElement(container, severity, message, null, cat);
   }
-  faviconCheck(favicon, category) {
+
+  checkFavicon(cat) {
     const container = document.querySelector("[csi-favicon]");
-    const icon = container.querySelector("[info-icon]");
-    const infoMessage = container.querySelector("[info-message]");
-    icon.className = "";
-    if (favicon) {
-      infoMessage.innerHTML = `This website appears to have a <strong>Favicon</strong>.`;
-      icon.classList.add("an", "an-chack", "seo-icon", "seo-icon-success");
-      this.updateIssueCounts(category, "passed");
-    } else {
-      infoMessage.innerHTML = `This webpage is missing a <strong>favicon</strong>. It is recommended to include a favicon, which is a small icon that represents your website and appears in browser tabs and bookmarks. Having a favicon enhances the visual identity of your website.`;
-      icon.classList.add("an", "an-square", "seo-icon", "seo-icon-warning");
-      this.updateIssueCounts(category, "medium");
-    }
+    const favicon = this.data?.favicon || "";
+
+    const severity = favicon ? "success" : "warning";
+    const message = favicon
+      ? "This website appears to have a <strong>Favicon</strong>."
+      : "This webpage is missing a <strong>favicon</strong>. It is recommended to include a favicon, which is a small icon that represents your website and appears in browser tabs and bookmarks. Having a favicon enhances the visual identity of your website.";
+
+    this.updateUIElement(container, severity, message, null, cat);
   }
 
-  robotsTxtCheck(hasRobotsTxt, category) {
+  checkRobotsTxt(cat) {
     const container = document.querySelector("[csi-robots-txt]");
-    const icon = container.querySelector("[info-icon]");
-    const infoMessage = container.querySelector("[info-message]");
-    icon.className = "";
-    if (hasRobotsTxt) {
-      infoMessage.innerHTML = `This website has a "<strong>robots.txt</strong>" file.`;
-      icon.classList.add("an", "an-chack", "seo-icon", "seo-icon-success");
-      this.updateIssueCounts(category, "passed");
-    } else {
-      infoMessage.innerHTML = `This website is <strong>missing a "robots.txt"</strong> file. This file can protect private content from appearing online, save bandwidth, and lower load time on your server. Creating and properly configuring a robots.txt file can help control the visibility of your website's content in search engines.`;
-      icon.classList.add("an", "an-triangle", "seo-icon", "seo-icon-danger");
-      this.updateIssueCounts(category, "high");
-    }
+    const hasRobotsTxt = this.data?.hasRobotsTxt || false;
+
+    const severity = hasRobotsTxt ? "success" : "danger";
+    const message = hasRobotsTxt
+      ? 'This website has a "<strong>robots.txt</strong>" file.'
+      : 'This website is <strong>missing a "robots.txt"</strong> file. This file can protect private content from appearing online, save bandwidth, and lower load time on your server. Creating and properly configuring a robots.txt file can help control the visibility of your website\'s content in search engines.';
+
+    this.updateUIElement(container, severity, message, null, cat);
   }
 
-  noFollowTagCheck(hasNoFollow, category) {
+  checkNoFollowTag(cat) {
     const container = document.querySelector("[csi-nofollow]");
-    const icon = container.querySelector("[info-icon]");
-    const infoMessage = container.querySelector("[info-message]");
-    icon.className = "";
-    if (hasNoFollow) {
-      infoMessage.innerHTML = `This website has a "<strong>Nofollow Tag</strong>". Having a Nofollow tag can impact your search engine ranking`;
-      icon.classList.add("an", "an-square", "seo-icon", "seo-icon-warning");
-      this.updateIssueCounts(category, "medium");
-    } else {
-      infoMessage.innerHTML = `This webpage is not using the nofollow meta tag!`;
-      icon.classList.add("an", "an-chack", "seo-icon", "seo-icon-success");
-      this.updateIssueCounts(category, "passed");
-    }
+    const hasNoFollow = this.data?.hasNoFollow || false;
+
+    const severity = hasNoFollow ? "warning" : "success";
+    const message = hasNoFollow
+      ? "This website has a <strong>Nofollow Tag</strong>. Having a Nofollow tag can impact your search engine ranking"
+      : "This webpage is not using the nofollow meta tag!";
+
+    this.updateUIElement(container, severity, message, null, cat);
   }
 
-  noIndexTagCheck(hasNoIndex, category) {
+  checkNoIndexTag(cat) {
     const container = document.querySelector("[csi-noindex]");
-    const icon = container.querySelector("[info-icon]");
-    const infoMessage = container.querySelector("[info-message]");
-    icon.className = "";
-    if (hasNoIndex) {
-      infoMessage.innerHTML = `This webpage includes a noindex meta tag. The presence of a noindex meta tag on this webpage instructs search engines not to index its content. As a result, the webpage will not appear in search engine results and will not be accessible through organic search queries.`;
-      icon.classList.add("an", "an-triangle", "seo-icon", "seo-icon-danger");
-      this.updateIssueCounts(category, "high");
-    } else {
-      infoMessage.innerHTML = `This webpage does not use the noindex meta tag. This means that it can be indexed by search engines.`;
-      icon.classList.add("an", "an-chack", "seo-icon", "seo-icon-success");
-      this.updateIssueCounts(category, "passed");
-    }
+    const hasNoIndex = this.data?.hasNoIndex || false;
+
+    const severity = hasNoIndex ? "danger" : "success";
+    const message = hasNoIndex
+      ? "This webpage includes a noindex meta tag. The presence of a noindex meta tag on this webpage instructs search engines not to index its content. As a result, the webpage will not appear in search engine results and will not be accessible through organic search queries."
+      : "This webpage does not use the noindex meta tag. This means that it can be indexed by search engines.";
+
+    this.updateUIElement(container, severity, message, null, cat);
   }
 
-  spfRecordCheck(spfRecord, category) {
+  checkSPFRecord(cat) {
     const container = document.querySelector("[csi-spf-record]");
-    const icon = container.querySelector("[info-icon]");
-    const infoMessage = container.querySelector("[info-message]");
-    icon.className = "";
+    const spfRecord = this.data?.spfRecord || false;
 
-    if (spfRecord) {
-      infoMessage.innerHTML = `This DNS server is using an SPF record.`;
-      icon.classList.add("an", "an-chack", "seo-icon", "seo-icon-success");
-      this.updateIssueCounts(category, "passed");
-    } else {
-      infoMessage.innerHTML = `This DNS server does not have an SPF record. SPF records are used to prevent email spoofing and help ensure that email messages sent from a particular domain are authorized and not forged`;
-      icon.classList.add("an", "an-triangle", "seo-icon", "seo-icon-warning");
-      this.updateIssueCounts(category, "high");
-    }
+    const severity = spfRecord ? "success" : "warning";
+    const message = spfRecord
+      ? "This DNS server is using an SPF record."
+      : "This DNS server does not have an SPF record. SPF records are used to prevent email spoofing and help ensure that email messages sent from a particular domain are authorized and not forged";
+
+    this.updateUIElement(container, severity, message, null, cat);
   }
 }

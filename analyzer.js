@@ -108,3 +108,27 @@ function descriptionCheck(description) {
     highIssues++;
   }
 }
+
+result1 = {
+  "6.38%": "3 High Issues",
+  "14.89%": "7 Medium Issues",
+  "12.77%": "6 Low Issues",
+  "65.96%": "31 tests passed",
+  outof100: 70,
+};
+
+result2 = {
+  "4.26%": "2 High Issues",
+  "12.77%": "6 Medium Issues",
+  "10.64%": "5 Low Issues",
+  "72.34%": "34 tests passed",
+  outof100: 76,
+};
+
+result3 = {
+  "6.38%": "3 High Issues",
+  "10.64%": "5 Medium Issues",
+  "8.51%": "4 Low Issues",
+  "74.47%": "35 tests passed",
+  outof100: 76,
+};

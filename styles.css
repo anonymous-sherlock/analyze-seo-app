@@ -339,30 +339,23 @@ img.screenCapture {
 .toast-body {
   text-transform: capitalize;
 }
+
 .toast .progress {
   position: absolute;
   bottom: 0;
-  left: 0;
-  height: 3px;
+  left: -2px;
+  border-radius: 2px;
+  height: 4px;
   width: 100%;
-  background: #ddd;
-}
-
-.toast .progress:before {
-  content: "";
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  height: 100%;
-  width: 100%;
-  background-color: var(--bs-danger);
-}
-.progress.active:before {
-  animation: progress 5s linear forwards;
+  background: transparent;
+  overflow: hidden; /* Added to hide the overflowing part of the progress bar */
 }
 
 @keyframes progress {
+  0% {
+    right: 100%; /* Starting position */
+  }
   100% {
-    right: 100%;
+    right: 0%; /* Ending position */
   }
 }
