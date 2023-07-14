@@ -9,6 +9,7 @@ use Spatie\Crawler\Crawler;
 use Spatie\Crawler\CrawlObservers\SitemapObserver;
 use DonatelloZa\RakePlus\RakePlus;
 
+
 // Initialize the GuzzleHttp client outside the function for connection pooling
 $client = new Client();
 
@@ -33,6 +34,7 @@ $domain = $urlParts['host'];
 ob_start();
 
 // Function to fetch the HTML content of a URL using Guzzle HTTP client
+$pageStime = microtime(true);
 function fetchHTML($url)
 {
   global $client;
@@ -233,29 +235,6 @@ function checkRobotsTxt($domain)
   } catch (\Exception $e) {
     return false;
   }
-}
-function getServerSignature($url)
-{
-  $ch = curl_init($url);
-  curl_setopt_array($ch, [
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_HEADER => true,
-    CURLOPT_NOBODY => true,
-    CURLOPT_TIMEOUT => 5, // Set a timeout of 5 seconds
-  ]);
-  $response = curl_exec($ch);
-  $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-  curl_close($ch);
-
-  $headers = substr($response, 0, $headerSize);
-
-  foreach (explode("\r\n", $headers) as $header) {
-    if (stripos($header, 'Server:') !== false) {
-      return trim(substr($header, strlen('Server:')));
-    }
-  }
-
-  return null;
 }
 function is404Page($url)
 {
@@ -613,7 +592,75 @@ function isNonSeoFriendlyUrl($url)
 
   return preg_match($pattern, $url) === 1;
 }
+function getServerSignature($url)
+{
+  $ch = curl_init($url);
+  curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_HEADER => true,
+    CURLOPT_NOBODY => true,
+    CURLOPT_TIMEOUT => 5, // Set a timeout of 5 seconds
+  ]);
 
+  $mh = curl_multi_init();
+  curl_multi_add_handle($mh, $ch);
+
+  $active = null;
+  do {
+    $status = curl_multi_exec($mh, $active);
+    if ($active) {
+      curl_multi_select($mh);
+    }
+  } while ($status === CURLM_CALL_MULTI_PERFORM || $active);
+
+  $response = curl_multi_getcontent($ch);
+  $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+
+  curl_multi_remove_handle($mh, $ch);
+  curl_multi_close($mh);
+
+  $headers = substr($response, 0, $headerSize);
+
+  foreach (explode("\r\n", $headers) as $header) {
+    if (stripos($header, 'Server:') !== false) {
+      return trim(substr($header, strlen('Server:')));
+    }
+  }
+
+  return null;
+}
+function checkURLRedirects($url)
+{
+  $mh = curl_multi_init();
+
+  $ch = curl_init($url);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+  curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+  curl_setopt($ch, CURLOPT_HEADER, true);
+  curl_setopt($ch, CURLOPT_NOBODY, true);
+  curl_setopt($ch, CURLOPT_TIMEOUT, 10); // Set a timeout of 10 seconds
+
+  curl_multi_add_handle($mh, $ch);
+
+  $active = null;
+  do {
+    $status = curl_multi_exec($mh, $active);
+    if ($active) {
+      curl_multi_select($mh);
+    }
+  } while ($status === CURLM_CALL_MULTI_PERFORM || $active);
+
+  $info = curl_getinfo($ch);
+  $finalURL = $info['url'];
+
+  curl_multi_remove_handle($mh, $ch);
+  curl_multi_close($mh);
+
+  $urlWithoutSlash = rtrim($url, '/');
+  $finalURLWithoutSlash = rtrim($finalURL, '/');
+
+  return $urlWithoutSlash === $finalURLWithoutSlash ? false : $finalURL;
+}
 
 // variable for function 
 // Construct the URL for a non-existent page (e.g., example.com/non-existent-page)
@@ -621,9 +668,7 @@ $nonExistentPageUrl = rtrim($url, '/') . '/non-existent-page';
 
 // All Function call
 $domSize = count($dom->getElementsByTagName('*'));
-$redirects = checkURLRedirects($url);
 $unsafeLinks = checkUnsafeCrossOriginLinks($dom, $html, $url);
-$serverSignature = getServerSignature($url);
 $spfRecord = getSPFRecord($domain);
 $hasCustom404Page = is404Page($nonExistentPageUrl);
 $hasNoFollow = hasMetaTag($xpath, 'name', ['nofollow']);
@@ -643,6 +688,8 @@ $inlineCSS = extractInlineCSS($xpath);
 $socialMediaMetaTags = extractSocialMediaMetaTags($xpath);
 $structuredData = extractStructuredData($xpath);
 $hsts = isHSTSEnabled($url);
+$redirects = checkURLRedirects($url);
+$serverSignature = getServerSignature($url);
 
 
 // extract internal and external links 
@@ -714,69 +761,19 @@ $nonSEOFriendlyLinks = $nonSEOFriendlyLinks ? array_column($nonSEOFriendlyLinks,
 
 
 
-// Function to check for URL redirects and return the redirection path
-function checkURLRedirects($url)
+
+
+
+
+
+
+
+
+
+
+
+function extractTextFromHTML($dom, $xpath)
 {
-  $ch = curl_init($url);
-  curl_setopt($ch, CURLOPT_HEADER, true);
-  curl_setopt($ch, CURLOPT_NOBODY, true);
-  curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-  $response = curl_exec($ch);
-  if ($response === false) {
-    // Error occurred while making the request
-    curl_close($ch);
-    return false;
-  }
-  $redirectUrl = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
-  curl_close($ch);
-
-  if ($redirectUrl !== $url && rtrim($redirectUrl, '/') === $url) {
-    return $redirectUrl;
-  } else {
-    return false;
-  }
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// Extract internal links with link text
-$starttime = microtime(true);
-
-
-
-$endtime = microtime(true);
-$executionTime = $endtime - $starttime;
-// echo "Execution time: " . $executionTime . " seconds\n";
-
-
-
-function extractTextFromHTML($html)
-{
-  // Create a DOMDocument object and load the HTML
-  $dom = new DOMDocument();
-
-  // Suppress warnings and errors for invalid HTML
-  libxml_use_internal_errors(true);
-  $dom->loadHTML($html);
-  libxml_clear_errors();
-
-  // Create a DOMXPath object to query the document
-  $xpath = new DOMXPath($dom);
-
   // Remove inline style elements
   $styleNodes = $xpath->query('//style');
   foreach ($styleNodes as $styleNode) {
@@ -790,24 +787,42 @@ function extractTextFromHTML($html)
   }
 
   // Get the text content without tags and inline styles
-  $text = strip_tags($dom->saveHTML());
+  $text = '';
+  $bodyNode = $xpath->query('//body')->item(0);
+  if ($bodyNode) {
+    $text = $bodyNode->textContent;
+  }
 
   // Remove extra spaces
   $text = preg_replace('/\s+/', ' ', $text);
 
-  // Remove punctuation
-  // $text = preg_replace('/[^\p{L}\p{N}\s]/u', '', $text);
-
-  // Remove extra full stops
-  // $text = preg_replace('/\.{2,}/', '.', $text);
-
   return trim($text);
 }
 
-$stopwords = json_decode(file_get_contents('stopword/en.json'), true);
-$text = extractTextFromHTML($html);
+
+$starttime = microtime(true);
+$text = extractTextFromHTML($dom, $xpath);
 $wordCount = str_word_count($text);
 
+
+$rake = RakePlus::create($text, 'en_US', 5, true)->keywords();
+$endtime = microtime(true);
+$executionTime = $endtime - $starttime;
+// echo "Execution time: " . $executionTime . " seconds\n" . PHP_EOL;
+
+
+
+
+
+
+
+
+
+
+
+$pageEtime = microtime(true);
+$pageExecutionTime = $pageEtime - $pageStime;
+// echo "page Execution time: " . $pageExecutionTime . " seconds\n";
 
 
 
@@ -818,10 +833,14 @@ ob_end_flush();
 $response = [
   'hasHttp2' => $hasHttp2,
   'hsts' => $hsts,
+  'Keywords' => $rake,
+  'wordCount' => $wordCount,
+  'text' => $text,
+  'redirects' => $redirects,
+  'loadTime' => $loadtime,
   'nonSEOFriendlyLinks' => $nonSEOFriendlyLinks,
   'internalLinks' => $internalLinks,
   'externalLinks' => $externalLinks,
-  'loadTime' => $loadtime,
   'structuredData' => $structuredData,
   'plaintextEmails' => $plaintextEmails,
   'socialMetaTags' => $socialMediaMetaTags,
@@ -830,14 +849,11 @@ $response = [
   'ssl' => $sslInfo,
   'deprecatedTags' => $deprecatedTags,
   'socialMediaPresence' => $socialMediaProfiles,
-  'wordCount' => $wordCount,
-  // 'text' => $text,
   'url' => $url,
   'domain' => $domain,
   'serverSignature' => $serverSignature,
   'spfRecord' => $spfRecord,
   'googleTrackingID' => $trackingID,
-  'redirects' => $redirects,
   'hasCustom404Page' => $hasCustom404Page,
   'hasNoFollow' => $hasNoFollow,
   'hasNoIndex' => $hasNoIndex,

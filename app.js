@@ -28,7 +28,10 @@ class ErrorTracker {
     this.checkNoFollowTag(cat);
     this.checkNoIndexTag(cat);
     this.checkSPFRecord(cat);
+    this.checkURLRedirect(cat);
+    this.nonSEOFriendlyURLCheck(cat);
 
+    console.log(this.categories.SEO);
     this.renderBadge(badge, this.categories.SEO);
   }
 
@@ -193,7 +196,7 @@ class ErrorTracker {
     let message =
       "All heading tags are <strong>well-structured and properly used</strong>.";
 
-    if (h1Count > 0) {
+    if (h1Count > 1) {
       message =
         "<strong>Multiple h1 tags found</strong> on the webpage. It is recommended to have <strong>only one h1 tag</strong> for proper heading structure.";
       severity = "danger";
@@ -319,6 +322,51 @@ class ErrorTracker {
     const message = spfRecord
       ? "This DNS server is using an SPF record."
       : "This DNS server does not have an SPF record. SPF records are used to prevent email spoofing and help ensure that email messages sent from a particular domain are authorized and not forged";
+
+    this.updateUIElement(container, severity, message, null, cat);
+  }
+
+  checkURLRedirect(cat) {
+    const container = document.querySelector("[csi-url-redirect]");
+    const redirects = this.data?.redirects;
+    const hasRedirect = redirects !== undefined && redirects !== false;
+    let severity = hasRedirect ? "warning" : "success";
+    let message = hasRedirect
+      ? "This URL performed redirects! While redirects are typically not advisable (as they can affect search engine indexing issues and adversely affect site loading time), one redirect may be acceptable, particularly if the URL is redirecting from a non-www version to its www version, or vice-versa."
+      : "This URL doesn't have any redirects (which could potentially cause site indexation issues and site loading delays).";
+
+    if (redirects === this.data?.url || redirects === false) {
+      message = "No URL redirection was detected on the webpage.";
+      severity = "success";
+    }
+
+    this.updateUIElement(container, severity, message, null, cat);
+  }
+
+  nonSEOFriendlyURLCheck(cat) {
+    const container = document.querySelector("[csi-seo-friendly-url]");
+    const nonSEOFriendlyLinks = this.data?.nonSEOFriendlyLinks || [];
+    const linkCount = nonSEOFriendlyLinks.length;
+    let severity = "success";
+    let message = "All links from this webpage are SEO friendly.";
+    if (
+      nonSEOFriendlyLinks === undefined ||
+      nonSEOFriendlyLinks === false ||
+      linkCount === 0
+    ) {
+      this.updateUIElement(container, severity, message, null, cat);
+      return;
+    }
+    if (linkCount < 5) {
+      severity = "info";
+      message = "This page includes some non-SEO friendly links.";
+    } else if (linkCount >= 5 && linkCount < 10) {
+      severity = "warning";
+      message = "This page includes several non-SEO friendly links.";
+    } else if (linkCount >= 10) {
+      severity = "danger";
+      message = "This page includes many non-SEO friendly links.";
+    }
 
     this.updateUIElement(container, severity, message, null, cat);
   }

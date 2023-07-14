@@ -5,6 +5,8 @@ use GuzzleHttp\Client;
 use GuzzleHttp\Promise;
 use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\Promise\Utils;
+use Spatie\Crawler\Crawler;
+use Spatie\Crawler\CrawlObservers\SitemapObserver;
 use DonatelloZa\RakePlus\RakePlus;
 
 // Initialize the GuzzleHttp client outside the function for connection pooling
@@ -17,7 +19,7 @@ ini_set('display_errors', 1);
 $url = $_GET['url'];
 // Validate and sanitize the URL input
 if (!filter_var($url, FILTER_VALIDATE_URL)) {
-  echo json_encode(['error' => 'Invalid URL']);
+  echo json_encode(['error' => 'Please Enter a Valid URL.']);
   exit;
 }
 
@@ -31,6 +33,7 @@ $domain = $urlParts['host'];
 ob_start();
 
 // Function to fetch the HTML content of a URL using Guzzle HTTP client
+$pageStime = microtime(true);
 function fetchHTML($url)
 {
   global $client;
@@ -231,29 +234,6 @@ function checkRobotsTxt($domain)
   } catch (\Exception $e) {
     return false;
   }
-}
-function getServerSignature($url)
-{
-  $ch = curl_init($url);
-  curl_setopt_array($ch, [
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_HEADER => true,
-    CURLOPT_NOBODY => true,
-    CURLOPT_TIMEOUT => 5, // Set a timeout of 5 seconds
-  ]);
-  $response = curl_exec($ch);
-  $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-  curl_close($ch);
-
-  $headers = substr($response, 0, $headerSize);
-
-  foreach (explode("\r\n", $headers) as $header) {
-    if (stripos($header, 'Server:') !== false) {
-      return trim(substr($header, strlen('Server:')));
-    }
-  }
-
-  return null;
 }
 function is404Page($url)
 {
@@ -596,6 +576,21 @@ function isHSTSEnabled($url)
 
   return false;
 }
+function isNonSeoFriendlyUrl($url)
+{
+  // Remove the protocol and www prefix
+  $url = preg_replace('/^https?:\/\/(www\.)?/', '', $url);
+
+  // Check for non-SEO friendly patterns
+  // '/\b\d{8,}\b/'              Numeric strings with 8 or more digits (e.g., product IDs, timestamps)
+  // '/[^a-zA-Z0-9\-\/_.]/'      Non-alphanumeric characters excluding allowed characters
+  // '/\d+[A-Za-z]+\d+/',        Alphanumeric strings with numbers and letters combined (e.g., abcd1234)
+  // '/[A-Za-z]+\d+[A-Za-z]+/'   Alphanumeric strings with letters and numbers combined (e.g., a1b2c3)
+
+  $pattern = '/\b\d{8,}\b|[^a-zA-Z0-9\-\/_.]|\d+[A-Za-z]+\d+|[A-Za-z]+\d+[A-Za-z]+/';
+
+  return preg_match($pattern, $url) === 1;
+}
 
 
 // variable for function 
@@ -604,7 +599,6 @@ $nonExistentPageUrl = rtrim($url, '/') . '/non-existent-page';
 
 // All Function call
 $domSize = count($dom->getElementsByTagName('*'));
-$redirects = checkURLRedirects($url);
 $unsafeLinks = checkUnsafeCrossOriginLinks($dom, $html, $url);
 $serverSignature = getServerSignature($url);
 $spfRecord = getSPFRecord($domain);
@@ -628,74 +622,137 @@ $structuredData = extractStructuredData($xpath);
 $hsts = isHSTSEnabled($url);
 
 
-// my new code
+// extract internal and external links 
+$nonSEOFriendlyLinks = [];
+$internalLinks = [];
+$internalLinkUrls = [];
+$externalLinks = [];
+$addedLinks = [];
+$normalizedOriginalUrlHost = strtolower(parse_url($url, PHP_URL_HOST));
+$linkNodes = $xpath->query('//a[not(starts-with(@href, "#"))]');
+foreach ($linkNodes as $linkNode) {
+  $href = $linkNode->getAttribute('href');
+  $text = trim(str_replace(["\r", "\n", "\t"], '', $linkNode->textContent));
 
+  if (strpos($href, 'mailto:') === 0 || strpos($href, 'tel:') === 0) {
+    continue;
+  }
+
+  if (!empty($href) && !empty($text)) {
+    if (filter_var($href, FILTER_VALIDATE_URL)) {
+      $parsedHref = parse_url($href);
+      $parsedUrlHost = strtolower($parsedHref['host'] ?? '');
+
+      if ($parsedUrlHost === $normalizedOriginalUrlHost) {
+        $fullUrl = $href;
+        $lowercaseUrl = strtolower($fullUrl);
+
+        if (!isset($internalLinkUrls[$lowercaseUrl])) {
+          $internalLinks[] = [
+            'url' => $fullUrl,
+            'text' => $text
+          ];
+
+          $internalLinkUrls[$lowercaseUrl] = true;
+        }
+      } else {
+        $fullUrl = rtrim($href, '/');
+        $lowercaseUrl = strtolower($fullUrl);
+
+        if (!isset($addedLinks[$lowercaseUrl])) {
+          $externalLinks[] = [
+            'url' => $fullUrl,
+            'text' => $text
+          ];
+
+          $addedLinks[$lowercaseUrl] = true;
+        }
+      }
+    } else {
+      $fullUrl = rtrim($url, '/') . '/' . ltrim($href, '/');
+      $lowercaseUrl = strtolower($fullUrl);
+
+      if (!isset($internalLinkUrls[$lowercaseUrl])) {
+        $internalLinks[] = [
+          'url' => $fullUrl,
+          'text' => $text
+        ];
+
+        $internalLinkUrls[$lowercaseUrl] = true;
+      }
+    }
+  }
+}
+// filter out non seo friendly link from internal array
+$nonSEOFriendlyLinks = array_filter($internalLinks, function ($link) {
+  return isNonSeoFriendlyUrl($link['url']);
+});
+$nonSEOFriendlyLinks = $nonSEOFriendlyLinks ? array_column($nonSEOFriendlyLinks, 'url') : false;
+
+
+function getServerSignature($url)
+{
+  $ch = curl_init($url);
+  curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_HEADER => true,
+    CURLOPT_NOBODY => true,
+    CURLOPT_TIMEOUT => 5, // Set a timeout of 5 seconds
+  ]);
+  $response = curl_exec($ch);
+  $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+  curl_close($ch);
+
+  $headers = substr($response, 0, $headerSize);
+
+  foreach (explode("\r\n", $headers) as $header) {
+    if (stripos($header, 'Server:') !== false) {
+      return trim(substr($header, strlen('Server:')));
+    }
+  }
+
+  return null;
+}
 // Function to check for URL redirects and return the redirection path
 function checkURLRedirects($url)
 {
-  $ch = curl_init($url);
-  curl_setopt($ch, CURLOPT_HEADER, true);
-  curl_setopt($ch, CURLOPT_NOBODY, true);
-  curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-  $response = curl_exec($ch);
-  if ($response === false) {
-    // Error occurred while making the request
-    curl_close($ch);
-    return false;
-  }
-  $redirectUrl = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
-  curl_close($ch);
+    $mh = curl_multi_init();
 
-  if ($redirectUrl !== $url && rtrim($redirectUrl, '/') === $url) {
-    return $redirectUrl;
-  } else {
-    return false;
-  }
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_HEADER, true);
+    curl_setopt($ch, CURLOPT_NOBODY, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10); // Set a timeout of 10 seconds
+
+    curl_multi_add_handle($mh, $ch);
+
+    $active = null;
+    do {
+        $status = curl_multi_exec($mh, $active);
+        if ($active) {
+            curl_multi_select($mh);
+        }
+    } while ($status === CURLM_CALL_MULTI_PERFORM || $active);
+
+    $finalURL = $url; // Default to original URL
+
+    if ($status === CURLM_OK) {
+        $info = curl_getinfo($ch);
+        $finalURL = $info['url'];
+    }
+
+    curl_multi_remove_handle($mh, $ch);
+    curl_multi_close($mh);
+
+    return $finalURL;
 }
+$redirects = checkURLRedirects($url);
 
-// Extract external links with link text
-$externalLinks = [];
-$externalLinkNodes = $xpath->query('//a[not(starts-with(@href, "/")) and not(starts-with(@href, "#"))]');
-$addedLinks = [];
-foreach ($externalLinkNodes as $linkNode) {
-  $href = $linkNode->getAttribute('href');
-  $text = trim(preg_replace('/\s+/', ' ', $linkNode->textContent));
 
-  if (empty($href) || empty($text)) {
-    continue; // Skip if href or text is empty
-  }
 
-  $linkParts = parse_url($href);
+// Extract internal links with link text
 
-  // Skip if URL parsing failed
-  if (!$linkParts || !isset($linkParts['host'])) {
-    continue;
-  }
-  $linkDomain = $linkParts['host'];
-
-  // Normalize the link domain and current domain for comparison
-  $normalizedLinkDomain = rtrim(strtolower($linkDomain), '/');
-  $normalizedCurrentDomain = rtrim(strtolower($domain), '/');
-
-  if ($normalizedLinkDomain === $normalizedCurrentDomain) {
-    continue; // Skip if link belongs to the same domain
-  }
-
-  $href = rtrim($href, '/');
-
-  // Check if the link is already added to internal or external links
-  if (isset($addedLinks[$href])) {
-    continue; // Skip if link is a duplicate
-  }
-
-  $addedLinks[$href] = true;
-
-  $externalLinks[] = [
-    'url' => $href,
-    'text' => $text
-  ];
-}
 
 
 
@@ -739,98 +796,17 @@ function extractTextFromHTML($html)
 
   return trim($text);
 }
-
-$stopwords = json_decode(file_get_contents('stopword/en.json'), true);
+$starttime = microtime(true);
 $text = extractTextFromHTML($html);
 $wordCount = str_word_count($text);
-
-
-
-
-
-
-
-
-
-
-$starttime = microtime(true);
-// Extract internal links with link text
-$nonSEOFriendlyLinks = [];
-$internalLinks = [];
-$internalLinkUrls = [];
-$normalizedOriginalUrlHost = strtolower(parse_url($url, PHP_URL_HOST));
-$base = rtrim($url, '/');
-
-$internalLinkNodes = $xpath->query('//a[not(starts-with(@href, "#"))]');
-foreach ($internalLinkNodes as $linkNode) {
-  $href = $linkNode->getAttribute('href');
-  $text = trim(str_replace(["\r", "\n", "\t"], '', $linkNode->textContent));
-  if (strpos($href, 'mailto:') === 0 || strpos($href, 'tel:') === 0) {
-    continue;
-  }
-  if (!empty($href) && !empty($text)) {
-    if (filter_var($href, FILTER_VALIDATE_URL)) {
-      $parsedHref = parse_url($href);
-      $parsedUrlHost = strtolower(isset($parsedHref['host']) ? $parsedHref['host'] : '');
-
-      if ($parsedUrlHost === $normalizedOriginalUrlHost) {
-        $fullUrl = $href;
-      } else {
-        continue; // Skip external URLs
-      }
-    } else {
-      $fullUrl = $base . '/' . ltrim($href, '/');
-    }
-
-    $lowercaseUrl = strtolower($fullUrl);
-
-    if (!isset($internalLinkUrls[$lowercaseUrl])) {
-      $internalLinks[] = [
-        'url' => $fullUrl,
-        'text' => $text
-      ];
-
-      $internalLinkUrls[$lowercaseUrl] = true;
-    }
-  }
-}
-
-
-
-function isNonSeoFriendlyUrl($url)
-{
-  // Remove the protocol and www prefix
-  $url = preg_replace('/^https?:\/\/(www\.)?/', '', $url);
-
-  // Check for non-SEO friendly patterns
-  $patterns = [
-    '/\b\d{8,}\b/',
-    // Numeric strings with 8 or more digits (e.g., product IDs, timestamps)
-    '/[^a-zA-Z0-9\-\/_.]/',
-    // Non-alphanumeric characters excluding allowed characters
-    '/\d+[A-Za-z]+\d+/',
-    // Alphanumeric strings with numbers and letters combined (e.g., abcd1234)
-    '/[A-Za-z]+\d+[A-Za-z]+/' // Alphanumeric strings with letters and numbers combined (e.g., a1b2c3)
-  ];
-
-  foreach ($patterns as $pattern) {
-    if (preg_match($pattern, $url)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-foreach ($internalLinks as $link) {
-  $url = $link['url'];
-  if (isNonSeoFriendlyUrl($url)) {
-    $nonSEOFriendlyLinks[] = $url;
-  }
-}
-
 $endtime = microtime(true);
 $executionTime = $endtime - $starttime;
 echo "Execution time: " . $executionTime . " seconds\n";
+
+
+$pageEtime = microtime(true);
+$pageExecutionTime = $pageEtime - $pageStime;
+// echo "page Execution time: " . $pageExecutionTime . " seconds\n";
 
 
 
@@ -841,9 +817,13 @@ ob_end_flush();
 $response = [
   'hasHttp2' => $hasHttp2,
   'hsts' => $hsts,
+  'wordCount' => $wordCount,
+  'text' => $text,
+  'redirects' => $redirects,
+  'loadTime' => $loadtime,
   'nonSEOFriendlyLinks' => $nonSEOFriendlyLinks,
   'internalLinks' => $internalLinks,
-  'loadTime' => $loadtime,
+  'externalLinks' => $externalLinks,
   'structuredData' => $structuredData,
   'plaintextEmails' => $plaintextEmails,
   'socialMetaTags' => $socialMediaMetaTags,
@@ -852,14 +832,11 @@ $response = [
   'ssl' => $sslInfo,
   'deprecatedTags' => $deprecatedTags,
   'socialMediaPresence' => $socialMediaProfiles,
-  'wordCount' => $wordCount,
-  // 'text' => $text,
   'url' => $url,
   'domain' => $domain,
   'serverSignature' => $serverSignature,
   'spfRecord' => $spfRecord,
   'googleTrackingID' => $trackingID,
-  'redirects' => $redirects,
   'hasCustom404Page' => $hasCustom404Page,
   'hasNoFollow' => $hasNoFollow,
   'hasNoIndex' => $hasNoIndex,
@@ -879,7 +856,6 @@ $response = [
   'headings' => $headings,
   'totalImageCount' => $totalImageCount,
   'imagesWithoutAltText' => $imagesWithoutAltText,
-  'externalLinks' => $externalLinks
 ];
 
 // Output the response as JSON

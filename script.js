@@ -80,30 +80,51 @@ function generateReportDate() {
 }
 // performing seo analysis
 async function performSEOAnalysis(url) {
-  // Construct the URL with the URL parameter
   const endpoint = "seo-res.php"; // Update with the actual PHP script filename or endpoint
   const requestUrl = `${endpoint}?url=${encodeURIComponent(url)}`;
 
   try {
-    const response = await fetch(requestUrl);
-    if (response.ok) {
-      const analysisResult = await response.json();
-      // Process the analysis result as needed
-      if (!analysisResult.error) {
-        fillData(analysisResult);
-        // ErrorTracker(analysisResult);
-        const errorTracker = new ErrorTracker(analysisResult);
-        errorTracker.analyze();
-      } else {
-        const toastError = new ToastError();
-        const keyValue = (input) =>
-          Object.entries(input).forEach(([key, value]) => {
-            toastError.ShowToast(value, "danger", 5);
-          });
-        keyValue(analysisResult);
-      }
+    let analysisResult;
+
+    // Check if the data is already stored in localStorage
+    const storedData = localStorage.getItem(requestUrl);
+    if (storedData) {
+      analysisResult = JSON.parse(storedData);
     } else {
-      throw new Error(`Error: ${response.status}`);
+      const response = await fetch(requestUrl);
+      if (response.ok) {
+        analysisResult = await response.json();
+        // Store the analysisResult in localStorage
+        localStorage.setItem(requestUrl, JSON.stringify(analysisResult));
+      } else {
+        throw new Error(`Error: ${response.status}`);
+      }
+    }
+
+    // Process the analysis result as needed
+    if (!analysisResult.error) {
+      fillData(analysisResult);
+      const errorTracker = new ErrorTracker(analysisResult);
+      errorTracker.analyze();
+    } else {
+      const toastError = new ToastError();
+      const keyValue = (input) =>
+        Object.entries(input).forEach(([key, value]) => {
+          toastError.ShowToast(value, "danger", 5);
+        });
+      keyValue(analysisResult);
+    }
+
+    // Check the number of requests made
+    const requestCount = localStorage.getItem("requestCount");
+    if (!requestCount || parseInt(requestCount) < 5) {
+      // Increment the requestCount and store it in localStorage
+      const newRequestCount = requestCount ? parseInt(requestCount) + 1 : 1;
+      localStorage.setItem("requestCount", newRequestCount.toString());
+    } else {
+      // Remove the stored data to fetch from the API next time
+      localStorage.removeItem(requestUrl);
+      localStorage.removeItem("requestCount");
     }
   } catch (error) {
     // Handle errors
@@ -124,6 +145,27 @@ function formatBytes(bytes) {
   }
 }
 // render headings
+async function renderTitle(data) {
+  const { title } = data;
+  const siteTitleElements = document.getElementsByClassName("site-title");
+  for (let i = 0; i < siteTitleElements.length; i++) {
+    const siteTitleElement = siteTitleElements[i];
+    siteTitleElement.innerHTML = title;
+  }
+}
+async function renderDescription(data) {
+  const { description } = data;
+  if (description) {
+    const siteDescriptionElements =
+      document.getElementsByClassName("site-description");
+    if (siteDescriptionElements.length > 0) {
+      Array.from(siteDescriptionElements).forEach((siteDescriptionElement) => {
+        siteDescriptionElement.innerHTML = description;
+      });
+    }
+  }
+}
+
 async function renderHeadings({ headings: data }) {
   const headingContainer = document.getElementById("heading-container");
   headingContainer.innerHTML = "";
@@ -180,26 +222,6 @@ async function renderHeadings({ headings: data }) {
     headingContainer.appendChild(headingTag);
   }
 }
-
-async function renderDescription(data) {
-  const { description } = data;
-  const siteDescriptionElements =
-    document.getElementsByClassName("site-description");
-
-  for (let i = 0; i < siteDescriptionElements.length; i++) {
-    const siteDescriptionElement = siteDescriptionElements[i];
-    siteDescriptionElement.innerHTML = description;
-  }
-}
-
-async function renderTitle(data) {
-  const { title } = data;
-  const siteTitleElements = document.getElementsByClassName("site-title");
-  for (let i = 0; i < siteTitleElements.length; i++) {
-    const siteTitleElement = siteTitleElements[i];
-    siteTitleElement.innerHTML = title;
-  }
-}
 async function renderSPFRecord(data) {
   const { spfRecord } = data;
   const spfRecordElement = document.querySelector(".spf-record");
@@ -210,10 +232,12 @@ async function renderSPFRecord(data) {
 async function renderUrlRedirects(data) {
   const { url, redirects } = data;
   const UrlRedirectElement = document.querySelector(".url-redirect");
-  if (url !== redirects) {
-    UrlRedirectElement.innerHTML = `<code>${url}</code>
-    <span class="px-1 bg-info text-white">→</span>
+  if (redirects) {
+    if (url !== redirects) {
+      UrlRedirectElement.innerHTML = `<code>${url}</code>
+    <span class="px-1 bg-info text-white">&rarr;</span>
     <code>${redirects}</code>`;
+    }
   }
 }
 function renderUnsafeLink(data) {
@@ -270,6 +294,7 @@ async function fillData(data) {
     renderDeprecatedTag(data);
     renderImageWithoutAlt(data);
     renderFavicon(data);
+    nonSEOFriendlyLinks(data);
   } catch (error) {
     console.log(error);
   }
@@ -596,8 +621,81 @@ async function renderDeprecatedTag(data) {
   deprecatedTagsWrapper.appendChild(deprecatedTagsContainer);
 }
 
-// toast error
+function nonSEOFriendlyLinks({ nonSEOFriendlyLinks: links }) {
+  const container = document.getElementById("non-seo-friendly-url");
 
+  // Remove the existing UI element if it exists
+  const existingUIElement = document.getElementById("non-seo-friendly-ui");
+  if (existingUIElement) {
+    container.removeChild(existingUIElement);
+  }
+  if (!links || !Array.isArray(links)) {
+    return;
+  }
+
+  const ulElement = document.createElement("ul");
+  ulElement.classList.add("list-group", "rounded-0", "p-0", "mt-3");
+  ulElement.id = "non-seo-friendly-ui";
+
+  const liElement = document.createElement("li");
+  liElement.classList.add("list-group-item");
+
+  const divElement = document.createElement("div");
+  divElement.classList.add("d-flex", "justify-content-between");
+  divElement.setAttribute("data-bs-toggle", "collapse");
+  divElement.setAttribute("href", "#multiCollapseH_friendly");
+  divElement.setAttribute("role", "button");
+  divElement.setAttribute("aria-expanded", "true");
+  divElement.setAttribute("aria-controls", "multiCollapseH_friendly");
+  divElement.setAttribute("bis_skin_checked", "1");
+
+  const pElement = document.createElement("p");
+  pElement.classList.add("mb-0");
+  pElement.textContent = "SEO unfriendly URL";
+
+  const spanElement = document.createElement("span");
+  spanElement.classList.add("badge", "badge-primary");
+  spanElement.textContent = links.length.toString();
+
+  divElement.appendChild(pElement);
+  divElement.appendChild(spanElement);
+
+  const collapseDivElement = document.createElement("div");
+  collapseDivElement.classList.add("collapse", "show");
+  collapseDivElement.setAttribute("id", "multiCollapseH_friendly");
+  collapseDivElement.setAttribute("bis_skin_checked", "1");
+
+  const hrElement = document.createElement("hr");
+
+  const olElement = document.createElement("ol");
+  olElement.classList.add("mb-0", "pb-2");
+
+  links.forEach((link) => {
+    const liElement = document.createElement("li");
+    liElement.classList.add("py-1", "text-break");
+
+    const aElement = document.createElement("a");
+    aElement.href = link;
+    aElement.target = "_blank";
+    aElement.rel = "noopener noreferrer";
+    aElement.textContent = link;
+
+    liElement.appendChild(aElement);
+    olElement.appendChild(liElement);
+  });
+
+  collapseDivElement.appendChild(hrElement);
+  collapseDivElement.appendChild(olElement);
+
+  liElement.appendChild(divElement);
+  liElement.appendChild(collapseDivElement);
+
+  ulElement.appendChild(liElement);
+
+  container.appendChild(ulElement);
+}
+
+// toast error
 class ToastError {
   ShowToast(text, color, sec) {
     const toastContainer = document.querySelector(".toast-container");
