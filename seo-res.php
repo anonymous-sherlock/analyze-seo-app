@@ -1,13 +1,15 @@
 <?php
-require __DIR__ . '/vendor/autoload.php';
+require_once('vendor/autoload.php');
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Promise;
+use GuzzleHttp\Psr7\Response;
+use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\Promise\Utils;
-use Spatie\Crawler\Crawler;
-use Spatie\Crawler\CrawlObservers\SitemapObserver;
 use DonatelloZa\RakePlus\RakePlus;
+
+
 
 
 // Initialize the GuzzleHttp client outside the function for connection pooling
@@ -34,7 +36,6 @@ $domain = $urlParts['host'];
 ob_start();
 
 // Function to fetch the HTML content of a URL using Guzzle HTTP client
-$pageStime = microtime(true);
 function fetchHTML($url)
 {
   global $client;
@@ -76,15 +77,15 @@ function fetchHTML($url)
   return $html;
 }
 
-$start = microtime(true); // Put it from the begining of the page
+$start = $_SERVER['REQUEST_TIME_FLOAT'];
 $html = fetchHTML($url);
-$finish = microtime(true); // Put it in the very end of the page
-$total_time = round(($finish - $start), 2);
-$loadtime = 'Page generated in ' . $total_time . ' seconds.';
+$finish = microtime(true);
+$loadTime = round($finish - $start, 2);
+
+// Calculate the page size in bytes
+$pageSize = mb_strlen($html, '8bit');
 
 // Fetch the HTML content of the provided URL
-// Calculate the page size in bytes
-$pageSize = strlen($html);
 
 
 // Create a DOMDocument object and load the HTML
@@ -423,49 +424,6 @@ function getSSLCertificateInfo($hostname)
 
   return $sslInfo;
 }
-function getHttpRequestsByType($dom, $xpath, $domain)
-{
-  $requests = [
-    'totalRequests' => 0,
-    'Resources' => [
-      'images' => [],
-      'javascript' => [],
-      'css' => [],
-    ],
-  ];
-
-  $resourceTypes = [
-    'images' => ['img', 'src', 'alt'],
-    'javascript' => ['script', 'src'],
-    'css' => ['link', 'href', 'rel', 'stylesheet'],
-  ];
-
-  foreach ($resourceTypes as $resourceType => $attributes) {
-    $nodes = $dom->getElementsByTagName($attributes[0]);
-    foreach ($nodes as $node) {
-      $attributeValue = $node->getAttribute($attributes[1]);
-      if (!empty($attributeValue)) {
-        if (count($attributes) > 2) {
-          if (count($attributes) > 3) {
-            $rel = $node->getAttribute($attributes[2]);
-            if ($rel === $attributes[3]) {
-              $requests['Resources'][$resourceType][] = $attributeValue;
-              $requests['totalRequests']++;
-            }
-          } else {
-            $requests['Resources'][$resourceType][] = $attributeValue;
-            $requests['totalRequests']++;
-          }
-        } else {
-          $requests['Resources'][$resourceType][] = $attributeValue;
-          $requests['totalRequests']++;
-        }
-      }
-    }
-  }
-
-  return $requests;
-}
 function extractPlaintextEmails($html)
 {
   $pattern = '/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/';
@@ -661,6 +619,42 @@ function checkURLRedirects($url)
 
   return $urlWithoutSlash === $finalURLWithoutSlash ? false : $finalURL;
 }
+function getHttpRequestsByType($dom, $xpath)
+{
+  $requests = [
+    'totalRequests' => 0,
+    'Resources' => [
+      'images' => [],
+      'javascript' => [],
+      'css' => [],
+    ],
+  ];
+
+  $resourceTypes = [
+    'images' => ['img', 'src'],
+    'javascript' => ['script', 'src'],
+    'css' => ['link', 'href', 'rel', 'stylesheet'],
+  ];
+
+  foreach ($resourceTypes as $resourceType => $attributes) {
+    $nodes = $dom->getElementsByTagName($attributes[0]);
+    foreach ($nodes as $node) {
+      $attributeValue = $node->getAttribute($attributes[1]);
+      if (!empty($attributeValue) && !in_array($attributeValue, $requests['Resources'][$resourceType])) {
+        if (count($attributes) > 2) {
+          $rel = $node->getAttribute($attributes[2]);
+          if (count($attributes) > 3 && $rel !== $attributes[3]) {
+            continue;
+          }
+        }
+        $requests['Resources'][$resourceType][] = $attributeValue;
+        $requests['totalRequests']++;
+      }
+    }
+  }
+
+  return $requests;
+}
 
 // variable for function 
 // Construct the URL for a non-existent page (e.g., example.com/non-existent-page)
@@ -682,7 +676,6 @@ $hasHttp2 = isHttp2Enabled($url);
 $socialMediaProfiles = getSocialMediaProfiles($xpath);
 $deprecatedTags = checkDeprecatedHTMLTags($xpath);
 $sslInfo = getSSLCertificateInfo($domain);
-$httpRequests = getHttpRequestsByType($dom, $xpath, $domain);
 $plaintextEmails = extractPlaintextEmails($html);
 $inlineCSS = extractInlineCSS($xpath);
 $socialMediaMetaTags = extractSocialMediaMetaTags($xpath);
@@ -690,6 +683,7 @@ $structuredData = extractStructuredData($xpath);
 $hsts = isHSTSEnabled($url);
 $redirects = checkURLRedirects($url);
 $serverSignature = getServerSignature($url);
+$httpRequests = getHttpRequestsByType($dom, $xpath);
 
 
 // extract internal and external links 
@@ -761,17 +755,14 @@ $nonSEOFriendlyLinks = $nonSEOFriendlyLinks ? array_column($nonSEOFriendlyLinks,
 
 
 
+$starttime = microtime(true);
 
 
 
 
-
-
-
-
-
-
-
+$endtime = microtime(true);
+$executionTime = $endtime - $starttime;
+// echo "Execution time: " . $executionTime . " seconds\n" . PHP_EOL;
 function extractTextFromHTML($dom, $xpath)
 {
   // Remove inline style elements
@@ -800,29 +791,12 @@ function extractTextFromHTML($dom, $xpath)
 }
 
 
-$starttime = microtime(true);
 $text = extractTextFromHTML($dom, $xpath);
 $wordCount = str_word_count($text);
-
-
 $rake = RakePlus::create($text, 'en_US', 5, true)->keywords();
-$endtime = microtime(true);
-$executionTime = $endtime - $starttime;
-// echo "Execution time: " . $executionTime . " seconds\n" . PHP_EOL;
 
 
 
-
-
-
-
-
-
-
-
-$pageEtime = microtime(true);
-$pageExecutionTime = $pageEtime - $pageStime;
-// echo "page Execution time: " . $pageExecutionTime . " seconds\n";
 
 
 
@@ -833,11 +807,15 @@ ob_end_flush();
 $response = [
   'hasHttp2' => $hasHttp2,
   'hsts' => $hsts,
+  'domSize' => $domSize,
+  'pageSize' => $pageSize,
+  'loadTime' => $loadTime,
+  // 'nonOptimizedImage' => $unoptimizedImages,
   'Keywords' => $rake,
   'wordCount' => $wordCount,
+  'httpRequests' => $httpRequests,
   'text' => $text,
   'redirects' => $redirects,
-  'loadTime' => $loadtime,
   'nonSEOFriendlyLinks' => $nonSEOFriendlyLinks,
   'internalLinks' => $internalLinks,
   'externalLinks' => $externalLinks,
@@ -845,7 +823,6 @@ $response = [
   'plaintextEmails' => $plaintextEmails,
   'socialMetaTags' => $socialMediaMetaTags,
   'hasFramesets' => $hasFramesets,
-  'httpRequests' => $httpRequests,
   'ssl' => $sslInfo,
   'deprecatedTags' => $deprecatedTags,
   'socialMediaPresence' => $socialMediaProfiles,
@@ -867,8 +844,6 @@ $response = [
   'title' => $title,
   'description' => $description,
   'favicon' => $favicon,
-  'domSize' => $domSize,
-  'pageSize' => $pageSize,
   'unsafeLinks' => $unsafeLinks,
   'headings' => $headings,
   'totalImageCount' => $totalImageCount,

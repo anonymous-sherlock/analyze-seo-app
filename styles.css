@@ -359,3 +359,44 @@ img.screenCapture {
     right: 0%; /* Ending position */
   }
 }
+
+/* overlay */
+.printable-container {
+  position: relative;
+}
+.overlay {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+  z-index: 999;
+  display: none; /* initially hide the overlay */
+}
+
+button#viewFullReport {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: none;
+  background-color: #ff7f00;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: opacity 0.3s;
+}
+
+button#viewFullReport:hover {
+  background: #000000;
+}
+
+.section-report:first-child {
+  height: 1200px;
+  overflow: hidden;
+}

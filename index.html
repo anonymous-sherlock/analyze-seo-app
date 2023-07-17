@@ -236,7 +236,9 @@
                             bis_skin_checked="1"
                           >
                             <i class="an an-stopwatch an-2x an-light"></i>
-                            <span class="me-2 ps-3">0.25 Seconds</span>
+                            <span class="me-2 ps-3 page-loadtime"
+                              >0 Seconds</span
+                            >
                           </div>
                         </div>
                         <div
@@ -412,8 +414,10 @@
                 </div>
               </div>
             </div>
+
+            <!-- common seo issue -->
             <div
-              class="scroll-top-margin pagebreak"
+              class="scroll-top-margin pagebreak section-report"
               id="seo"
               bis_skin_checked="1"
             >
@@ -1419,8 +1423,10 @@
                 </div>
               </div>
             </div>
+
+            <!-- performance -->
             <div
-              class="mt-4 scroll-top-margin pagebreak"
+              class="mt-4 scroll-top-margin pagebreak section-report"
               id="performance"
               bis_skin_checked="1"
             >
@@ -1431,12 +1437,11 @@
                 >
                   <h2>Speed optimizations</h2>
                   <div class="report-badges d-flex" bis_skin_checked="1">
-                    <span class="badge badge-warning ms-1"
-                      >3 Medium Issues</span
-                    >
+                    <!-- bagde -->
                   </div>
                 </div>
-                <div class="border-top p-3" bis_skin_checked="1">
+                <!-- pi dom size -->
+                <div class="border-top p-3" bis_skin_checked="1" pi-dom-size>
                   <div class="row" bis_skin_checked="1">
                     <div class="col" bis_skin_checked="1">
                       <div class="row" bis_skin_checked="1">
@@ -1451,6 +1456,7 @@
                             >
                               <i
                                 class="an an-chack seo-icon seo-icon-success"
+                                info-icon
                               ></i>
                             </div>
                             <div class="fw-bold" bis_skin_checked="1">
@@ -1459,7 +1465,7 @@
                           </div>
                         </div>
                         <div class="col-12 col-lg-8" bis_skin_checked="1">
-                          <p class="mb-0">
+                          <p class="mb-0" info-message>
                             The Document Object Model (DOM) of this webpage has
                             <strong>1187 nodes</strong> which is less than the
                             recommended value of 1500 nodes.
@@ -1483,7 +1489,8 @@
                     </div>
                   </div>
                 </div>
-                <div class="border-top p-3" bis_skin_checked="1">
+                <!-- pi load time -->
+                <div class="border-top p-3" bis_skin_checked="1" pi-load-time>
                   <div class="row" bis_skin_checked="1">
                     <div class="col" bis_skin_checked="1">
                       <div class="row" bis_skin_checked="1">
@@ -1498,6 +1505,7 @@
                             >
                               <i
                                 class="an an-chack seo-icon seo-icon-success"
+                                info-icon
                               ></i>
                             </div>
                             <div class="fw-bold" bis_skin_checked="1">
@@ -1506,11 +1514,8 @@
                           </div>
                         </div>
                         <div class="col-12 col-lg-8" bis_skin_checked="1">
-                          <p class="mb-0">
-                            The loading speed of this webpage, as measured is
-                            approximately <strong>0.25 seconds</strong>, which
-                            is faster than the average loading time of 2.5
-                            seconds.
+                          <p class="mb-0" info-message>
+                            <!-- added later -->
                           </p>
                         </div>
                       </div>
@@ -1531,7 +1536,8 @@
                     </div>
                   </div>
                 </div>
-                <div class="border-top p-3" bis_skin_checked="1">
+                <!-- pi page size  -->
+                <div class="border-top p-3" bis_skin_checked="1" pi-page-size>
                   <div class="row" bis_skin_checked="1">
                     <div class="col" bis_skin_checked="1">
                       <div class="row" bis_skin_checked="1">
@@ -1545,7 +1551,8 @@
                               bis_skin_checked="1"
                             >
                               <i
-                                class="an an-square seo-icon seo-icon-warning"
+                                class="an an-chack seo-icon seo-icon-success"
+                                info-icon
                               ></i>
                             </div>
                             <div class="fw-bold" bis_skin_checked="1">
@@ -1554,17 +1561,8 @@
                           </div>
                         </div>
                         <div class="col-12 col-lg-8" bis_skin_checked="1">
-                          <p class="mb-0">
-                            This webpage's HTML is larger than the average,
-                            measuring at
-                            <strong class="page-size">0 kB</strong> as compared
-                            to the <strong>standard 97.66 kB.</strong> This can
-                            result in slower loading speeds, potentially causing
-                            visitors to leave and resulting in decreased
-                            revenue. To decrease the HTML size, techniques such
-                            as HTML compression, utilizing CSS layouts, using
-                            external style sheets, and moving javascript to
-                            separate files are effective methods.
+                          <p class="mb-0" info-message>
+                            <!-- added later -->
                           </p>
                         </div>
                       </div>
@@ -1585,7 +1583,12 @@
                     </div>
                   </div>
                 </div>
-                <div class="border-top p-3" bis_skin_checked="1">
+                <!-- pi http request  -->
+                <div
+                  class="border-top p-3"
+                  bis_skin_checked="1"
+                  pi-http-requests
+                >
                   <div class="row" bis_skin_checked="1">
                     <div class="col" bis_skin_checked="1">
                       <div class="row" bis_skin_checked="1">
@@ -1600,6 +1603,7 @@
                             >
                               <i
                                 class="an an-chack seo-icon seo-icon-success"
+                                info-icon
                               ></i>
                             </div>
                             <div class="fw-bold" bis_skin_checked="1">
@@ -1608,12 +1612,8 @@
                           </div>
                         </div>
                         <div class="col-12 col-lg-8" bis_skin_checked="1">
-                          <p>
-                            This webpage has <strong>19 http requests</strong>.
-                            A higher number of http requests results in a user's
-                            browser needing to request a large number of objects
-                            from the server, which will ultimately slow down the
-                            loading of your webpage.
+                          <p info-message>
+                            <!-- added later -->
                           </p>
                           <ul
                             class="list-group rounded-0 p-0 mt-3"
@@ -2166,8 +2166,9 @@
                 </div>
               </div>
             </div>
+            <!-- security -->
             <div
-              class="mt-4 scroll-top-margin pagebreak"
+              class="mt-4 scroll-top-margin pagebreak section-report"
               id="security"
               bis_skin_checked="1"
             >
@@ -2517,8 +2518,9 @@
                 </div>
               </div>
             </div>
+            <!-- advance -->
             <div
-              class="mt-4 scroll-top-margin pagebreak"
+              class="mt-4 scroll-top-margin pagebreak section-report"
               id="advance"
               bis_skin_checked="1"
             >
@@ -5014,6 +5016,10 @@
                 </div>
               </div>
             </div>
+
+            <!-- overlay -->
+            <div class="overlay"></div>
+            <button id="viewFullReport">View Full Report</button>
           </div>
         </div>
         <!-- report result end -->

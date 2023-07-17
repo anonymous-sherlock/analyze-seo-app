@@ -1,3 +1,31 @@
+// toast error
+class ToastError {
+  ShowToast(text, color, sec) {
+    const toastContainer = document.querySelector(".toast-container");
+    if (toastContainer) {
+      const toast = document.createElement("div");
+      toast.className = `toast toast-${color} show`;
+      toast.setAttribute("role", "alert");
+      toast.setAttribute("aria-live", "assertive");
+      toast.setAttribute("aria-atomic", "true");
+
+      toast.innerHTML = `
+        <div class="d-flex">
+          <div class="toast-body">
+            <span>${text}</span>
+            </div>
+          </div>
+          <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+      `;
+
+      toastContainer.appendChild(toast);
+      setTimeout(() => {
+        toast.remove();
+      }, Number(sec) * 1000);
+    }
+  }
+}
 function showScreenshot(event) {
   event.preventDefault(); // Prevent form submission
 
@@ -37,6 +65,7 @@ function showScreenshot(event) {
 
   // Hide the loader after the image is loaded
   img.onload = async () => {
+    setupReportView();
     // Perform SEO analysis
     await performSEOAnalysis(url);
     document.body.style.overflowY = "";
@@ -295,6 +324,7 @@ async function fillData(data) {
     renderImageWithoutAlt(data);
     renderFavicon(data);
     nonSEOFriendlyLinks(data);
+    renderLoadTime(data);
   } catch (error) {
     console.log(error);
   }
@@ -695,31 +725,82 @@ function nonSEOFriendlyLinks({ nonSEOFriendlyLinks: links }) {
   container.appendChild(ulElement);
 }
 
-// toast error
-class ToastError {
-  ShowToast(text, color, sec) {
-    const toastContainer = document.querySelector(".toast-container");
-    if (toastContainer) {
-      const toast = document.createElement("div");
-      toast.className = `toast toast-${color} show`;
-      toast.setAttribute("role", "alert");
-      toast.setAttribute("aria-live", "assertive");
-      toast.setAttribute("aria-atomic", "true");
+// Code Improvement Suggestions components
+function isValidNumber(number) {
+  return typeof number === "number" && !isNaN(number);
+}
 
-      toast.innerHTML = `
-        <div class="d-flex">
-          <div class="toast-body">
-            <span>${text}</span>
-            </div>
-          </div>
-          <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-      `;
+function isNotNullOrUndefined(value) {
+  return value !== null && value !== undefined;
+}
 
-      toastContainer.appendChild(toast);
-      setTimeout(() => {
-        toast.remove();
-      }, Number(sec) * 1000);
-    }
+function isNotEmptyArray(array) {
+  return Array.isArray(array) && array.length > 0;
+}
+
+// Improved version of renderLoadTime function
+function renderLoadTime(data) {
+  const { loadTime } = data;
+  const loadTimeElements = document.querySelectorAll(".page-loadtime");
+
+  if (isValidNumber(loadTime)) {
+    const roundedLoadTime = parseFloat(loadTime).toFixed(2);
+    loadTimeElements.forEach((loadTimeElement) => {
+      loadTimeElement.innerText = roundedLoadTime + " Seconds";
+    });
+  } else {
+    console.error("Invalid load time or missing elements.");
   }
+}
+function setupReportView() {
+  const sections = document.querySelectorAll(".section-report");
+  const viewFullReportBtn = document.getElementById("viewFullReport");
+  const overlay = document.querySelector(".overlay");
+
+  function showFullReport() {
+    sections.forEach((section) => {
+      if (section === sections[0]) {
+        section.style.height = "auto";
+        section.style.overflow = "visible";
+      } else {
+        section.style.display = "block";
+      }
+    });
+    overlay.style.display = "none";
+    overlay.style.pointerEvents = "none"; // Disable pointer events on the overlay
+    viewFullReportBtn.style.display = "none";
+    document.body.style.overflow = "auto";
+    observer.disconnect();
+  }
+
+  const observer = new IntersectionObserver(
+    ([entry]) => {
+      if (entry.isIntersecting) {
+        overlay.style.display = "block";
+        viewFullReportBtn.style.display = "block";
+      } else {
+        overlay.style.display = "none";
+        viewFullReportBtn.style.display = "none";
+      }
+    },
+    { threshold: 0 }
+  );
+
+  observer.observe(sections[0]);
+
+  // Hide all sections except the first one
+  sections.forEach((section, index) => {
+    if (index !== 0) {
+      section.style.display = "none";
+    } else {
+      // Calculate the height for the first section
+
+      const firstSectionHeight = Math.floor(section.offsetHeight / 2);
+      // Set the calculated height and overflow for the first section
+      section.style.height = `${firstSectionHeight}px`;
+      section.style.overflow = "hidden";
+    }
+  });
+
+  viewFullReportBtn.addEventListener("click", showFullReport);
 }

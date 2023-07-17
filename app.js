@@ -3,7 +3,7 @@ class ErrorTracker {
     this.data = analysisResult;
     this.categories = {
       SEO: {},
-      "Speed Optimizations": {},
+      Performance: {},
       "Server and Security": {},
       Advance: {},
     };
@@ -11,6 +11,7 @@ class ErrorTracker {
 
   analyze() {
     this.analyzeSEO();
+    this.analyzePerformance();
   }
 
   analyzeSEO() {
@@ -35,6 +36,19 @@ class ErrorTracker {
     this.renderBadge(badge, this.categories.SEO);
   }
 
+  analyzePerformance() {
+    const badge = document.querySelector("#performance");
+    const cat = "Performance";
+
+    this.checkDOMSize(cat);
+    this.checkLoadTime(cat);
+    this.checkPageSize(cat);
+    this.checkHttpRequests(cat);
+
+    console.log(this.categories.Performance);
+    this.renderBadge(badge, this.categories.Performance);
+  }
+
   renderBadge(selector, cat) {
     const reportBadge = selector.querySelector(".report-badges");
 
@@ -45,7 +59,7 @@ class ErrorTracker {
     const categoryData = [
       { name: "danger", label: "High Issue", order: 1 },
       { name: "warning", label: "Medium Issue", order: 2 },
-      { name: "low", label: "Low Issue", order: 3 },
+      { name: "info", label: "Low Issue", order: 3 },
       { name: "success", label: "Test Passed", order: 4 },
     ];
 
@@ -68,9 +82,9 @@ class ErrorTracker {
 
         // Determine the text based on the count
         let text = `${count} ${label}`;
-        if (count === 1) {
-          // Remove the 's' from the text for singular case
-          text = text.replace(" Issues", " Issue");
+        if (count > 1) {
+          // Append 's' to the text for plural case
+          text = text.replace(" Issue", " Issues");
         }
 
         badge.textContent = text;
@@ -366,6 +380,103 @@ class ErrorTracker {
     } else if (linkCount >= 10) {
       severity = "danger";
       message = "This page includes many non-SEO friendly links.";
+    }
+
+    this.updateUIElement(container, severity, message, null, cat);
+  }
+  // Permorfance check method
+
+  checkDOMSize(cat) {
+    const container = document.querySelector("[pi-dom-size]");
+    const domSize = this.data?.domSize || 0;
+    let severity, message;
+
+    if (domSize < 1500) {
+      severity = "success";
+      message = `The Document Object Model (DOM) of this webpage has <strong>${domSize} nodes</strong> which is less than the recommended value of 1500 nodes.`;
+    } else if (domSize < 1800) {
+      severity = "info";
+      message = `The Document Object Model (DOM) of this webpage has <strong>${domSize} nodes</strong> which is more than the recommended value of 1500 nodes. A large DOM size negatively affects site performance and increases the page load time.`;
+    } else if (domSize < 2500) {
+      severity = "warning";
+      message = `The Document Object Model (DOM) of this webpage has <strong>${domSize} nodes</strong> which is more than the recommended value of 1500 nodes. A large DOM size negatively affects site performance and increases the page load time.`;
+    } else {
+      severity = "danger";
+      message = `The Document Object Model (DOM) of this webpage has <strong>${domSize} nodes</strong> which exceeds the recommended value of 1500 nodes. A large DOM size negatively affects site performance and increases the page load time.`;
+    }
+
+    this.updateUIElement(container, severity, message, null, cat);
+  }
+  checkLoadTime(cat) {
+    const container = document.querySelector("[pi-load-time]");
+    const loadTime = this.data?.loadTime || 0;
+
+    let severity, message;
+
+    if (loadTime > 2.5) {
+      severity = "danger";
+      message = `The loading speed of this webpage, as measured, is approximately <strong>${loadTime} seconds</strong>, which is slower than the average loading time of <strong>2.5 seconds.</strong> It's recommended to optimize the page load time to improve user experience and overall performance.`;
+    } else if (loadTime >= 1.5 && loadTime <= 2.4) {
+      severity = "info";
+      message = `The loading speed of this webpage, as measured, is approximately <strong>${loadTime} seconds</strong>, which is faster than the average loading time of <strong>2.5 seconds.</strong> However, there is still room for improvement. Consider optimizing the page load time further for better user experience.`;
+    } else if (loadTime > 0) {
+      severity = "success";
+      message = `The loading speed of this webpage, as measured, is approximately <strong>${loadTime} seconds</strong>, which is faster than the average loading time of <strong>2.5 seconds.</strong> Great job! However, it's always beneficial to continue optimizing the page load time for better user experience.`;
+    } else {
+      severity = "info";
+      message = `The loading speed of this webpage could not be determined. Please ensure accurate measurement and monitoring of the page load time to identify areas for optimization and improve overall performance.`;
+    }
+
+    this.updateUIElement(container, severity, message, null, cat);
+  }
+
+  checkPageSize(cat) {
+    const container = document.querySelector("[pi-page-size]");
+    const pageSizeBytes = this.data?.pageSize || 0;
+    const pageSize = formatBytes(pageSizeBytes);
+    const averageSize = 98.84; // Average page size in kB
+
+    let severity, message;
+
+    if (pageSizeBytes > averageSize * 1024 && pageSizeBytes < 120 * 1024) {
+      severity = "info";
+      message = `This webpage's HTML is larger than the average, measuring at <strong>${pageSize}</strong> as compared to the <strong>standard ${averageSize} kB.</strong> While it's larger than average, it is still within an acceptable range. To optimize the page size further and improve loading speeds, consider techniques such as HTML compression, utilizing CSS layouts, using external style sheets, and moving JavaScript to separate files.`;
+    } else if (
+      pageSizeBytes > averageSize * 1024 &&
+      pageSizeBytes < 150 * 1024
+    ) {
+      severity = "warning";
+      message = `This webpage's HTML is larger than the average, measuring at <strong>${pageSize}</strong> as compared to the <strong>standard ${averageSize} kB.</strong> It's recommended to optimize the page size to improve loading speeds and provide a better user experience. Consider techniques such as HTML compression, utilizing CSS layouts, using external style sheets, and moving JavaScript to separate files.`;
+    } else if (pageSizeBytes > averageSize * 1024) {
+      severity = "danger";
+      message = `This webpage's HTML is larger than the average, measuring at <strong>${pageSize}</strong> as compared to the <strong>standard ${averageSize} kB.</strong> This can result in slower loading speeds, potentially causing visitors to leave and resulting in decreased revenue. To decrease the HTML size, techniques such as HTML compression, utilizing CSS layouts, using external style sheets, and moving JavaScript to separate files are effective methods.`;
+    } else {
+      severity = "success";
+      message = `This webpage's HTML size is within the average range, measuring at <strong>${pageSize}</strong>. Great job! However, it's always beneficial to optimize the page size to improve loading speeds and provide a better user experience.`;
+    }
+
+    this.updateUIElement(container, severity, message, null, cat);
+  }
+
+  checkHttpRequests(cat) {
+    const container = document.querySelector("[pi-http-requests]");
+    const totalRequests = this.data?.httpRequests?.totalRequests || 0;
+    const averageRequests = 25; // Average number of HTTP requests
+
+    let severity, message;
+
+    if (totalRequests > averageRequests && totalRequests <= 50) {
+      severity = "info";
+      message = `This webpage has <strong>${totalRequests} HTTP requests</strong>, which is higher than the average of ${averageRequests}. While it's more than average, it is still within an acceptable range. To optimize the page loading speed, consider reducing the number of requests by combining or minifying resources and using caching techniques.`;
+    } else if (totalRequests > averageRequests && totalRequests <= 75) {
+      severity = "warning";
+      message = `This webpage has <strong>${totalRequests} HTTP requests</strong>, which is higher than the average of ${averageRequests}. It's recommended to optimize the page loading speed by reducing the number of requests. Consider combining or minifying resources, using caching techniques, and optimizing the loading of external scripts and stylesheets.`;
+    } else if (totalRequests > averageRequests) {
+      severity = "danger";
+      message = `This webpage has <strong>${totalRequests} HTTP requests</strong>, which is higher than the average of ${averageRequests}. This can significantly impact the page loading speed and user experience. To improve performance, it's crucial to reduce the number of requests by combining or minifying resources, optimizing caching, and minimizing the use of external scripts and stylesheets.`;
+    } else {
+      severity = "success";
+      message = `This webpage has <strong>${totalRequests} HTTP requests</strong>, which is within the average range of ${averageRequests}. Great job! However, optimizing the page loading speed by reducing unnecessary requests is always beneficial.`;
     }
 
     this.updateUIElement(container, severity, message, null, cat);
