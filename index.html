@@ -3,7 +3,7 @@
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="css/app.css" />
-    <link rel="stylesheet" type="text/css" href="styles.css" />
+    <link rel="stylesheet" type="text/css" href="css/styles.css" />
   </head>
 
   <body>
@@ -5032,8 +5032,34 @@
       bis_skin_checked="1"
     ></div>
 
+    <!-- View Full Report Form -->
+    <div class="pop-over-form">
+      <div class="overlay-black-bg"></div>
+      <form class="discountForm" method="POST">
+        <span class="DiscountHeading">Unlock Your Full SEO Report!</span>
+        <p class="DiscountSubheading">
+          Get a comprehensive analysis of your website's SEO performance. Sign
+          up now to receive your detailed report straight to your inbox.
+        </p>
+        <div class="inputContainer">
+          <input
+            placeholder="Enter your email"
+            type="email"
+            name="email"
+            id="email-address"
+            autocomplete="false"
+          />
+          <div class="error-text">Please enter a valid email address.</div>
+          <button type="submit" class="submitButton">
+            Get Your SEO Report Now
+          </button>
+        </div>
+        <span class="exitBtn">x</span>
+      </form>
+    </div>
+
     <script src="js/app.js" type="module"></script>
-    <script src="script.js"></script>
-    <script src="app.js"></script>
+    <script src="js/script.js"></script>
+    <script src="js/errTrack.js"></script>
   </body>
 </html>

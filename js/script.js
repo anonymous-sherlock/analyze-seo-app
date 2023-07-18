@@ -1,8 +1,9 @@
 // toast error
-class ToastError {
+class Toast {
   ShowToast(text, color, sec) {
     const toastContainer = document.querySelector(".toast-container");
     if (toastContainer) {
+      toastContainer.innerHTML = "";
       const toast = document.createElement("div");
       toast.className = `toast toast-${color} show`;
       toast.setAttribute("role", "alert");
@@ -10,14 +11,14 @@ class ToastError {
       toast.setAttribute("aria-atomic", "true");
 
       toast.innerHTML = `
-        <div class="d-flex">
-          <div class="toast-body">
-            <span>${text}</span>
+          <div class="d-flex">
+            <div class="toast-body">
+              <span>${text}</span>
+              </div>
             </div>
+            <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
           </div>
-          <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-      `;
+        `;
 
       toastContainer.appendChild(toast);
       setTimeout(() => {
@@ -42,12 +43,6 @@ function showScreenshot(event) {
   document.body.style.overflowY = "hidden";
   loader.classList.remove("hidden");
 
-  // Add a small delay to allow the element to be displayed before applying animation
-  // setTimeout(() => {
-  //   resultContainer.style.opacity = "1";
-  //   resultContainer.style.transform = "translateY(0)";
-  //   resultContainer.style.scrollMarginTop = "100px";
-  // }, 300);
   // Remove previously appended webCapture image
   webCapture.innerHTML = "";
 
@@ -109,51 +104,29 @@ function generateReportDate() {
 }
 // performing seo analysis
 async function performSEOAnalysis(url) {
-  const endpoint = "seo-res.php"; // Update with the actual PHP script filename or endpoint
+  const endpoint = "api/report/seo-res.php"; // Update with the actual PHP script filename or endpoint
   const requestUrl = `${endpoint}?url=${encodeURIComponent(url)}`;
 
   try {
-    let analysisResult;
+    const response = await fetch(requestUrl);
+    if (response.ok) {
+      const analysisResult = await response.json();
 
-    // Check if the data is already stored in localStorage
-    const storedData = localStorage.getItem(requestUrl);
-    if (storedData) {
-      analysisResult = JSON.parse(storedData);
-    } else {
-      const response = await fetch(requestUrl);
-      if (response.ok) {
-        analysisResult = await response.json();
-        // Store the analysisResult in localStorage
-        localStorage.setItem(requestUrl, JSON.stringify(analysisResult));
+      // Process the analysis result as needed
+      if (!analysisResult.error) {
+        fillData(analysisResult);
+        const errorTracker = new ErrorTracker(analysisResult);
+        errorTracker.analyze();
       } else {
-        throw new Error(`Error: ${response.status}`);
+        const toastError = new Toast();
+        const keyValue = (input) =>
+          Object.entries(input).forEach(([key, value]) => {
+            toastError.ShowToast(value, "danger", 5);
+          });
+        keyValue(analysisResult);
       }
-    }
-
-    // Process the analysis result as needed
-    if (!analysisResult.error) {
-      fillData(analysisResult);
-      const errorTracker = new ErrorTracker(analysisResult);
-      errorTracker.analyze();
     } else {
-      const toastError = new ToastError();
-      const keyValue = (input) =>
-        Object.entries(input).forEach(([key, value]) => {
-          toastError.ShowToast(value, "danger", 5);
-        });
-      keyValue(analysisResult);
-    }
-
-    // Check the number of requests made
-    const requestCount = localStorage.getItem("requestCount");
-    if (!requestCount || parseInt(requestCount) < 5) {
-      // Increment the requestCount and store it in localStorage
-      const newRequestCount = requestCount ? parseInt(requestCount) + 1 : 1;
-      localStorage.setItem("requestCount", newRequestCount.toString());
-    } else {
-      // Remove the stored data to fetch from the API next time
-      localStorage.removeItem(requestUrl);
-      localStorage.removeItem("requestCount");
+      throw new Error(`Error: ${response.status}`);
     }
   } catch (error) {
     // Handle errors
@@ -264,8 +237,8 @@ async function renderUrlRedirects(data) {
   if (redirects) {
     if (url !== redirects) {
       UrlRedirectElement.innerHTML = `<code>${url}</code>
-    <span class="px-1 bg-info text-white">&rarr;</span>
-    <code>${redirects}</code>`;
+      <span class="px-1 bg-info text-white">&rarr;</span>
+      <code>${redirects}</code>`;
     }
   }
 }
@@ -280,27 +253,27 @@ function renderUnsafeLink(data) {
   const linkItems = unsafeLinks
     .map(
       (elem) => `
-    <li class="py-1 text-break">
-      <a href="${elem.url}" target="_blank" rel="noopener noreferrer">${elem.url}</a>
-    </li>
-  `
+      <li class="py-1 text-break">
+        <a href="${elem.url}" target="_blank" rel="noopener noreferrer">${elem.url}</a>
+      </li>
+    `
     )
     .join("");
 
   const html = `
-    <li class="list-group-item">
-      <div class="d-flex justify-content-between" data-bs-toggle="collapse" href="#coLinksCollapse" role="button" aria-expanded="false" aria-controls="coLinksCollapse">
-        <p class="mb-0">Unsafe Cross-Origin Links</p>
-        <span class="badge badge-primary">${unsafeLinks.length}</span>
-      </div>
-      <div class="collapse" id="coLinksCollapse">
-        <hr>
-        <ol class="mb-0 pb-2">
-          ${linkItems}
-        </ol>
-      </div>
-    </li>
-  `;
+      <li class="list-group-item">
+        <div class="d-flex justify-content-between" data-bs-toggle="collapse" href="#coLinksCollapse" role="button" aria-expanded="false" aria-controls="coLinksCollapse">
+          <p class="mb-0">Unsafe Cross-Origin Links</p>
+          <span class="badge badge-primary">${unsafeLinks.length}</span>
+        </div>
+        <div class="collapse" id="coLinksCollapse">
+          <hr>
+          <ol class="mb-0 pb-2">
+            ${linkItems}
+          </ol>
+        </div>
+      </li>
+    `;
   unsafeLinkContainer.innerHTML = html;
 }
 
@@ -381,35 +354,35 @@ async function renderSitemap(data) {
   const checkSitemap = document.querySelector("[check-sitemap]");
 
   const sitemapHTML = `<li class="list-group-item">
-    <div
-      class="d-flex justify-content-between"
-      data-bs-toggle="collapse"
-      href="#seoReport_sitemaps"
-      role="button"
-      aria-expanded="false"
-      aria-controls="seoReport_sitemaps"
-      bis_skin_checked="1"
-    >
-      <p class="mb-0">Sitemaps</p>
-      <span class="badge badge-primary">1</span>
-    </div>
-    <div
-      class="collapse"
-      id="seoReport_sitemaps"
-      bis_skin_checked="1"
-    >
-      <hr />
-      <ol class="mb-0 pb-2">
-        <li class="py-1 text-break">
-          <a
-            href="${sitemapURL}"
-            target="_blank"
-            rel="noopener noreferrer"
-          >${sitemapURL}</a>
-        </li>
-      </ol>
-    </div>
-  </li>`;
+      <div
+        class="d-flex justify-content-between"
+        data-bs-toggle="collapse"
+        href="#seoReport_sitemaps"
+        role="button"
+        aria-expanded="false"
+        aria-controls="seoReport_sitemaps"
+        bis_skin_checked="1"
+      >
+        <p class="mb-0">Sitemaps</p>
+        <span class="badge badge-primary">1</span>
+      </div>
+      <div
+        class="collapse"
+        id="seoReport_sitemaps"
+        bis_skin_checked="1"
+      >
+        <hr />
+        <ol class="mb-0 pb-2">
+          <li class="py-1 text-break">
+            <a
+              href="${sitemapURL}"
+              target="_blank"
+              rel="noopener noreferrer"
+            >${sitemapURL}</a>
+          </li>
+        </ol>
+      </div>
+    </li>`;
 
   if (sitemapURL) {
     sitemap.innerHTML = sitemapHTML;
@@ -802,5 +775,72 @@ function setupReportView() {
     }
   });
 
-  viewFullReportBtn.addEventListener("click", showFullReport);
+  async function showPopOver() {
+    const popupCloseBtn = document.querySelector(".exitBtn");
+    const popOverForm = document.querySelector(".pop-over-form");
+    const emailInput = document.getElementById("email-address");
+    const errorText = document.querySelector(".error-text");
+
+    popOverForm.style.display = "flex";
+    popupCloseBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      popOverForm.style.display = "none";
+    });
+
+    const discountForm = document.querySelector(".discountForm");
+    discountForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const email = emailInput.value;
+
+      // Validate email format
+      if (!isValidEmail(email)) {
+        errorText.style.display = "block";
+        emailInput.style.border = "1px solid red";
+        emailInput.style.animation = "shake 0.5s";
+        emailInput.addEventListener("animationend", () => {
+          emailInput.style.animation = "";
+        });
+        return;
+      }
+
+      try {
+        const response = await fetch("api/user/add-user.php", {
+          method: "POST",
+          body: JSON.stringify({ email }),
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            popOverForm.style.display = "none";
+            showFullReport();
+          }
+        } else if (response.status === 409) {
+          popOverForm.style.display = "none";
+          showFullReport();
+        } else {
+          throw new Error("Request failed with status " + response.status);
+        }
+        const toastSuccess = new Toast();
+        toastSuccess.ShowToast("Report Generated Successfully", "success", 5);
+      } catch (error) {
+        alert(
+          "An error occurred while submitting the form. Please try again later."
+        );
+      }
+    });
+  }
+
+  function isValidEmail(email) {
+    // Email validation regex pattern
+    const emailPattern = /^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/;
+    return emailPattern.test(email);
+  }
+
+  viewFullReportBtn.addEventListener("click", () => {
+    showPopOver();
+  });
 }

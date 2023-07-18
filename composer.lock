@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "217bc0c37f0b692dffda3613add6123f",
+    "content-hash": "8cfe24a06a48df69a2f35451a728ecfe",
     "packages": [
         {
             "name": "donatello-za/rake-php-plus",
@@ -2404,8 +2404,10 @@
     "packages-dev": [],
     "aliases": [],
     "minimum-stability": "dev",
-    "stability-flags": [],
-    "prefer-stable": false,
+    "stability-flags": {
+        "php-ai/php-ml": 20
+    },
+    "prefer-stable": true,
     "prefer-lowest": false,
     "platform": [],
     "platform-dev": [],

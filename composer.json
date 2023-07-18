@@ -1,4 +1,6 @@
 {
+  "minimum-stability": "dev",
+  "prefer-stable": true,
   "require": {
     "donatello-za/rake-php-plus": "^1.0",
     "guzzlehttp/guzzle": "^7.7",
@@ -6,6 +8,5 @@
     "spatie/crawler": "^8.0",
     "rmccue/requests": "^2.0",
     "php-ai/php-ml": "dev-master"
-  },
-  "minimum-stability": "dev"
+  }
 }

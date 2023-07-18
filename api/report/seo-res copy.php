@@ -1,16 +1,13 @@
 <?php
-require_once('vendor/autoload.php');
+require_once(__DIR__ . '/../../vendor/autoload.php');
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Promise;
-use GuzzleHttp\Psr7\Response;
-use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\Promise\Utils;
+use Spatie\Crawler\Crawler;
+use Spatie\Crawler\CrawlObservers\SitemapObserver;
 use DonatelloZa\RakePlus\RakePlus;
-
-
-
 
 // Initialize the GuzzleHttp client outside the function for connection pooling
 $client = new Client();
@@ -36,6 +33,7 @@ $domain = $urlParts['host'];
 ob_start();
 
 // Function to fetch the HTML content of a URL using Guzzle HTTP client
+$pageStime = microtime(true);
 function fetchHTML($url)
 {
   global $client;
@@ -77,15 +75,15 @@ function fetchHTML($url)
   return $html;
 }
 
-$start = $_SERVER['REQUEST_TIME_FLOAT'];
+$start = microtime(true); // Put it from the begining of the page
 $html = fetchHTML($url);
-$finish = microtime(true);
-$loadTime = round($finish - $start, 2);
-
-// Calculate the page size in bytes
-$pageSize = mb_strlen($html, '8bit');
+$finish = microtime(true); // Put it in the very end of the page
+$total_time = round(($finish - $start), 2);
+$loadtime = 'Page generated in ' . $total_time . ' seconds.';
 
 // Fetch the HTML content of the provided URL
+// Calculate the page size in bytes
+$pageSize = strlen($html);
 
 
 // Create a DOMDocument object and load the HTML
@@ -424,6 +422,49 @@ function getSSLCertificateInfo($hostname)
 
   return $sslInfo;
 }
+function getHttpRequestsByType($dom, $xpath, $domain)
+{
+  $requests = [
+    'totalRequests' => 0,
+    'Resources' => [
+      'images' => [],
+      'javascript' => [],
+      'css' => [],
+    ],
+  ];
+
+  $resourceTypes = [
+    'images' => ['img', 'src', 'alt'],
+    'javascript' => ['script', 'src'],
+    'css' => ['link', 'href', 'rel', 'stylesheet'],
+  ];
+
+  foreach ($resourceTypes as $resourceType => $attributes) {
+    $nodes = $dom->getElementsByTagName($attributes[0]);
+    foreach ($nodes as $node) {
+      $attributeValue = $node->getAttribute($attributes[1]);
+      if (!empty($attributeValue)) {
+        if (count($attributes) > 2) {
+          if (count($attributes) > 3) {
+            $rel = $node->getAttribute($attributes[2]);
+            if ($rel === $attributes[3]) {
+              $requests['Resources'][$resourceType][] = $attributeValue;
+              $requests['totalRequests']++;
+            }
+          } else {
+            $requests['Resources'][$resourceType][] = $attributeValue;
+            $requests['totalRequests']++;
+          }
+        } else {
+          $requests['Resources'][$resourceType][] = $attributeValue;
+          $requests['totalRequests']++;
+        }
+      }
+    }
+  }
+
+  return $requests;
+}
 function extractPlaintextEmails($html)
 {
   $pattern = '/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/';
@@ -550,111 +591,7 @@ function isNonSeoFriendlyUrl($url)
 
   return preg_match($pattern, $url) === 1;
 }
-function getServerSignature($url)
-{
-  $ch = curl_init($url);
-  curl_setopt_array($ch, [
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_HEADER => true,
-    CURLOPT_NOBODY => true,
-    CURLOPT_TIMEOUT => 5, // Set a timeout of 5 seconds
-  ]);
 
-  $mh = curl_multi_init();
-  curl_multi_add_handle($mh, $ch);
-
-  $active = null;
-  do {
-    $status = curl_multi_exec($mh, $active);
-    if ($active) {
-      curl_multi_select($mh);
-    }
-  } while ($status === CURLM_CALL_MULTI_PERFORM || $active);
-
-  $response = curl_multi_getcontent($ch);
-  $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-
-  curl_multi_remove_handle($mh, $ch);
-  curl_multi_close($mh);
-
-  $headers = substr($response, 0, $headerSize);
-
-  foreach (explode("\r\n", $headers) as $header) {
-    if (stripos($header, 'Server:') !== false) {
-      return trim(substr($header, strlen('Server:')));
-    }
-  }
-
-  return null;
-}
-function checkURLRedirects($url)
-{
-  $mh = curl_multi_init();
-
-  $ch = curl_init($url);
-  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-  curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-  curl_setopt($ch, CURLOPT_HEADER, true);
-  curl_setopt($ch, CURLOPT_NOBODY, true);
-  curl_setopt($ch, CURLOPT_TIMEOUT, 10); // Set a timeout of 10 seconds
-
-  curl_multi_add_handle($mh, $ch);
-
-  $active = null;
-  do {
-    $status = curl_multi_exec($mh, $active);
-    if ($active) {
-      curl_multi_select($mh);
-    }
-  } while ($status === CURLM_CALL_MULTI_PERFORM || $active);
-
-  $info = curl_getinfo($ch);
-  $finalURL = $info['url'];
-
-  curl_multi_remove_handle($mh, $ch);
-  curl_multi_close($mh);
-
-  $urlWithoutSlash = rtrim($url, '/');
-  $finalURLWithoutSlash = rtrim($finalURL, '/');
-
-  return $urlWithoutSlash === $finalURLWithoutSlash ? false : $finalURL;
-}
-function getHttpRequestsByType($dom, $xpath)
-{
-  $requests = [
-    'totalRequests' => 0,
-    'Resources' => [
-      'images' => [],
-      'javascript' => [],
-      'css' => [],
-    ],
-  ];
-
-  $resourceTypes = [
-    'images' => ['img', 'src'],
-    'javascript' => ['script', 'src'],
-    'css' => ['link', 'href', 'rel', 'stylesheet'],
-  ];
-
-  foreach ($resourceTypes as $resourceType => $attributes) {
-    $nodes = $dom->getElementsByTagName($attributes[0]);
-    foreach ($nodes as $node) {
-      $attributeValue = $node->getAttribute($attributes[1]);
-      if (!empty($attributeValue) && !in_array($attributeValue, $requests['Resources'][$resourceType])) {
-        if (count($attributes) > 2) {
-          $rel = $node->getAttribute($attributes[2]);
-          if (count($attributes) > 3 && $rel !== $attributes[3]) {
-            continue;
-          }
-        }
-        $requests['Resources'][$resourceType][] = $attributeValue;
-        $requests['totalRequests']++;
-      }
-    }
-  }
-
-  return $requests;
-}
 
 // variable for function 
 // Construct the URL for a non-existent page (e.g., example.com/non-existent-page)
@@ -663,6 +600,7 @@ $nonExistentPageUrl = rtrim($url, '/') . '/non-existent-page';
 // All Function call
 $domSize = count($dom->getElementsByTagName('*'));
 $unsafeLinks = checkUnsafeCrossOriginLinks($dom, $html, $url);
+$serverSignature = getServerSignature($url);
 $spfRecord = getSPFRecord($domain);
 $hasCustom404Page = is404Page($nonExistentPageUrl);
 $hasNoFollow = hasMetaTag($xpath, 'name', ['nofollow']);
@@ -676,14 +614,12 @@ $hasHttp2 = isHttp2Enabled($url);
 $socialMediaProfiles = getSocialMediaProfiles($xpath);
 $deprecatedTags = checkDeprecatedHTMLTags($xpath);
 $sslInfo = getSSLCertificateInfo($domain);
+$httpRequests = getHttpRequestsByType($dom, $xpath, $domain);
 $plaintextEmails = extractPlaintextEmails($html);
 $inlineCSS = extractInlineCSS($xpath);
 $socialMediaMetaTags = extractSocialMediaMetaTags($xpath);
 $structuredData = extractStructuredData($xpath);
 $hsts = isHSTSEnabled($url);
-$redirects = checkURLRedirects($url);
-$serverSignature = getServerSignature($url);
-$httpRequests = getHttpRequestsByType($dom, $xpath);
 
 
 // extract internal and external links 
@@ -754,17 +690,86 @@ $nonSEOFriendlyLinks = array_filter($internalLinks, function ($link) {
 $nonSEOFriendlyLinks = $nonSEOFriendlyLinks ? array_column($nonSEOFriendlyLinks, 'url') : false;
 
 
-
-$starttime = microtime(true);
-
-
-
-
-$endtime = microtime(true);
-$executionTime = $endtime - $starttime;
-// echo "Execution time: " . $executionTime . " seconds\n" . PHP_EOL;
-function extractTextFromHTML($dom, $xpath)
+function getServerSignature($url)
 {
+  $ch = curl_init($url);
+  curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_HEADER => true,
+    CURLOPT_NOBODY => true,
+    CURLOPT_TIMEOUT => 5, // Set a timeout of 5 seconds
+  ]);
+  $response = curl_exec($ch);
+  $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+  curl_close($ch);
+
+  $headers = substr($response, 0, $headerSize);
+
+  foreach (explode("\r\n", $headers) as $header) {
+    if (stripos($header, 'Server:') !== false) {
+      return trim(substr($header, strlen('Server:')));
+    }
+  }
+
+  return null;
+}
+// Function to check for URL redirects and return the redirection path
+function checkURLRedirects($url)
+{
+  $mh = curl_multi_init();
+
+  $ch = curl_init($url);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+  curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+  curl_setopt($ch, CURLOPT_HEADER, true);
+  curl_setopt($ch, CURLOPT_NOBODY, true);
+  curl_setopt($ch, CURLOPT_TIMEOUT, 10); // Set a timeout of 10 seconds
+
+  curl_multi_add_handle($mh, $ch);
+
+  $active = null;
+  do {
+    $status = curl_multi_exec($mh, $active);
+    if ($active) {
+      curl_multi_select($mh);
+    }
+  } while ($status === CURLM_CALL_MULTI_PERFORM || $active);
+
+  $finalURL = $url; // Default to original URL
+
+  if ($status === CURLM_OK) {
+    $info = curl_getinfo($ch);
+    $finalURL = $info['url'];
+  }
+
+  curl_multi_remove_handle($mh, $ch);
+  curl_multi_close($mh);
+
+  return $finalURL;
+}
+$redirects = checkURLRedirects($url);
+
+
+
+// Extract internal links with link text
+
+
+
+
+
+function extractTextFromHTML($html)
+{
+  // Create a DOMDocument object and load the HTML
+  $dom = new DOMDocument();
+
+  // Suppress warnings and errors for invalid HTML
+  libxml_use_internal_errors(true);
+  $dom->loadHTML($html);
+  libxml_clear_errors();
+
+  // Create a DOMXPath object to query the document
+  $xpath = new DOMXPath($dom);
+
   // Remove inline style elements
   $styleNodes = $xpath->query('//style');
   foreach ($styleNodes as $styleNode) {
@@ -778,25 +783,30 @@ function extractTextFromHTML($dom, $xpath)
   }
 
   // Get the text content without tags and inline styles
-  $text = '';
-  $bodyNode = $xpath->query('//body')->item(0);
-  if ($bodyNode) {
-    $text = $bodyNode->textContent;
-  }
+  $text = strip_tags($dom->saveHTML());
 
   // Remove extra spaces
   $text = preg_replace('/\s+/', ' ', $text);
 
+  // Remove punctuation
+  // $text = preg_replace('/[^\p{L}\p{N}\s]/u', '', $text);
+
+  // Remove extra full stops
+  // $text = preg_replace('/\.{2,}/', '.', $text);
+
   return trim($text);
 }
-
-
-$text = extractTextFromHTML($dom, $xpath);
+$starttime = microtime(true);
+$text = extractTextFromHTML($html);
 $wordCount = str_word_count($text);
-$rake = RakePlus::create($text, 'en_US', 5, true)->keywords();
+$endtime = microtime(true);
+$executionTime = $endtime - $starttime;
+echo "Execution time: " . $executionTime . " seconds\n";
 
 
-
+$pageEtime = microtime(true);
+$pageExecutionTime = $pageEtime - $pageStime;
+// echo "page Execution time: " . $pageExecutionTime . " seconds\n";
 
 
 
@@ -807,15 +817,10 @@ ob_end_flush();
 $response = [
   'hasHttp2' => $hasHttp2,
   'hsts' => $hsts,
-  'domSize' => $domSize,
-  'pageSize' => $pageSize,
-  'loadTime' => $loadTime,
-  // 'nonOptimizedImage' => $unoptimizedImages,
-  'Keywords' => $rake,
   'wordCount' => $wordCount,
-  'httpRequests' => $httpRequests,
   'text' => $text,
   'redirects' => $redirects,
+  'loadTime' => $loadtime,
   'nonSEOFriendlyLinks' => $nonSEOFriendlyLinks,
   'internalLinks' => $internalLinks,
   'externalLinks' => $externalLinks,
@@ -823,6 +828,7 @@ $response = [
   'plaintextEmails' => $plaintextEmails,
   'socialMetaTags' => $socialMediaMetaTags,
   'hasFramesets' => $hasFramesets,
+  'httpRequests' => $httpRequests,
   'ssl' => $sslInfo,
   'deprecatedTags' => $deprecatedTags,
   'socialMediaPresence' => $socialMediaProfiles,
@@ -844,6 +850,8 @@ $response = [
   'title' => $title,
   'description' => $description,
   'favicon' => $favicon,
+  'domSize' => $domSize,
+  'pageSize' => $pageSize,
   'unsafeLinks' => $unsafeLinks,
   'headings' => $headings,
   'totalImageCount' => $totalImageCount,
