@@ -5,6 +5,5 @@
     "donatello-za/rake-php-plus": "^1.0",
     "guzzlehttp/guzzle": "^7.7",
     "rmccue/requests": "^2.0",
-    "php-ai/php-ml": "dev-master"
   }
 }
