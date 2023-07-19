@@ -833,13 +833,6 @@ $response = [
 ];
 
 // Output the response as JSON
-$responseJson = json_encode($response);
-echo json_encode($responseJson);
-
-// Save the response to the cache file
-// if (!is_dir($cachePath)) {
-//   mkdir($cachePath, 0777, true);
-// }
-// file_put_contents($cacheFilePath, $responseJson);
+echo json_encode($response);
 
 ?>
