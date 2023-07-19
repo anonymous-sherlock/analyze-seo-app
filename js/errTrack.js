@@ -23,6 +23,7 @@ class ErrorTracker {
     this.checkHeadings(cat);
     this.checkCustom404Page(cat);
     this.checkImageAltText(cat);
+    this.CheckInPageLink(cat);
     this.checkLanguage(cat);
     this.checkFavicon(cat);
     this.checkRobotsTxt(cat);
@@ -267,6 +268,44 @@ class ErrorTracker {
 
     this.updateUIElement(container, severity, message, null, cat);
   }
+  CheckInPageLink(cat) {
+    const container = document.querySelector("[csi-in-page-link]");
+    const { internalLinks, externalLinks } = this.data || {};
+    const internalLinkCount = internalLinks ? internalLinks.length : 0;
+    const externalLinkCount = externalLinks ? externalLinks.length : 0;
+    const totalLinks = internalLinkCount + externalLinkCount;
+
+    let severity = "success";
+    let message = "All links on this webpage are in-page links.";
+
+    if (totalLinks === 0) {
+      severity = "danger";
+      message = "This Webpage Doesn't have any internal and external link";
+      this.updateUIElement(container, severity, message, null, cat);
+      return;
+    }
+
+    let internalLinkRatio = 0;
+    let externalLinkRatio = 0;
+
+    if (totalLinks > 0) {
+      internalLinkRatio = internalLinkCount / totalLinks;
+      externalLinkRatio = externalLinkCount / totalLinks;
+    }
+
+    if (internalLinkRatio >= 0.7 && externalLinkRatio <= 0.3) {
+      severity = "success";
+      message = "This page has a high ratio of internal links.";
+    } else if (internalLinkRatio >= 0.3 && externalLinkRatio <= 0.7) {
+      severity = "info";
+      message =
+        "This page has a balanced ratio of internal and external links.";
+    } else {
+      severity = "warning";
+      message = "This page has a low ratio of internal links.";
+    }
+    this.updateUIElement(container, severity, message, null, cat);
+  }
 
   checkLanguage(cat) {
     const container = document.querySelector("[csi-language]");
@@ -384,8 +423,8 @@ class ErrorTracker {
 
     this.updateUIElement(container, severity, message, null, cat);
   }
-  // Permorfance check method
 
+  // Permorfance check method
   checkDOMSize(cat) {
     const container = document.querySelector("[pi-dom-size]");
     const domSize = this.data?.domSize || 0;

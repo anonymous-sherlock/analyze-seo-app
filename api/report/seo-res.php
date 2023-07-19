@@ -9,8 +9,6 @@ use GuzzleHttp\Promise\Utils;
 use DonatelloZa\RakePlus\RakePlus;
 
 
-
-
 // Initialize the GuzzleHttp client outside the function for connection pooling
 $client = new Client();
 
@@ -24,6 +22,8 @@ if (!filter_var($url, FILTER_VALIDATE_URL)) {
   echo json_encode(['error' => 'Please Enter a Valid URL.']);
   exit;
 }
+// file based caching
+// require('cache-cleanup.php');
 
 
 // Extract the domain from the provided URL
@@ -654,6 +654,16 @@ function getHttpRequestsByType($dom, $xpath)
 
   return $requests;
 }
+function getJavaScriptsWithoutDefer($xpath)
+{
+  $scriptElements = $xpath->query('//script[not(@defer)][@src]');
+  $urls = [];
+  foreach ($scriptElements as $script) {
+    $urls[] = $script->getAttribute('src');
+  }
+  return $urls;
+}
+
 
 // variable for function 
 // Construct the URL for a non-existent page (e.g., example.com/non-existent-page)
@@ -683,6 +693,8 @@ $hsts = isHSTSEnabled($url);
 $redirects = checkURLRedirects($url);
 $serverSignature = getServerSignature($url);
 $httpRequests = getHttpRequestsByType($dom, $xpath);
+$nonDeferJs = getJavaScriptsWithoutDefer($xpath);
+
 
 
 // extract internal and external links 
@@ -746,6 +758,8 @@ foreach ($linkNodes as $linkNode) {
     }
   }
 }
+
+
 // filter out non seo friendly link from internal array
 $nonSEOFriendlyLinks = array_filter($internalLinks, function ($link) {
   return isNonSeoFriendlyUrl($link['url']);
@@ -755,44 +769,13 @@ $nonSEOFriendlyLinks = $nonSEOFriendlyLinks ? array_column($nonSEOFriendlyLinks,
 
 
 $starttime = microtime(true);
-
-
-
-
 $endtime = microtime(true);
 $executionTime = $endtime - $starttime;
 // echo "Execution time: " . $executionTime . " seconds\n" . PHP_EOL;
-function extractTextFromHTML($dom, $xpath)
-{
-  // Remove inline style elements
-  $styleNodes = $xpath->query('//style');
-  foreach ($styleNodes as $styleNode) {
-    $styleNode->parentNode->removeChild($styleNode);
-  }
-
-  // Remove script elements
-  $scriptNodes = $xpath->query('//script');
-  foreach ($scriptNodes as $scriptNode) {
-    $scriptNode->parentNode->removeChild($scriptNode);
-  }
-
-  // Get the text content without tags and inline styles
-  $text = '';
-  $bodyNode = $xpath->query('//body')->item(0);
-  if ($bodyNode) {
-    $text = $bodyNode->textContent;
-  }
-
-  // Remove extra spaces
-  $text = preg_replace('/\s+/', ' ', $text);
-
-  return trim($text);
-}
 
 
-$text = extractTextFromHTML($dom, $xpath);
-$wordCount = str_word_count($text);
-$rake = RakePlus::create($text, 'en_US', 5, true)->keywords();
+
+
 
 
 
@@ -804,16 +787,16 @@ ob_end_flush();
 
 // Create the final response array
 $response = [
+  'nonDeferJs' => $nonDeferJs,
   'hasHttp2' => $hasHttp2,
   'hsts' => $hsts,
   'domSize' => $domSize,
   'pageSize' => $pageSize,
   'loadTime' => $loadTime,
   // 'nonOptimizedImage' => $unoptimizedImages,
-  'Keywords' => $rake,
-  'wordCount' => $wordCount,
+  // 'Keywords' => $rake,
+  // 'wordCount' => $wordCount,
   'httpRequests' => $httpRequests,
-  'text' => $text,
   'redirects' => $redirects,
   'nonSEOFriendlyLinks' => $nonSEOFriendlyLinks,
   'internalLinks' => $internalLinks,
@@ -850,5 +833,13 @@ $response = [
 ];
 
 // Output the response as JSON
-echo json_encode($response);
+$responseJson = json_encode($response);
+echo json_encode($responseJson);
+
+// Save the response to the cache file
+// if (!is_dir($cachePath)) {
+//   mkdir($cachePath, 0777, true);
+// }
+// file_put_contents($cacheFilePath, $responseJson);
+
 ?>

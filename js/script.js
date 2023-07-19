@@ -50,7 +50,6 @@ function showScreenshot(event) {
   const imgElement = document.querySelector(".mac-view");
   const { height: imgHeight, width: imgWidth } =
     imgElement.getBoundingClientRect();
-
   const img = document.createElement("img");
   img.src = `https://api.screenshotmachine.com/?key=f7ee5e&url=${encodeURIComponent(
     url
@@ -60,7 +59,7 @@ function showScreenshot(event) {
 
   // Hide the loader after the image is loaded
   img.onload = async () => {
-    setupReportView();
+    // setupReportView();
     // Perform SEO analysis
     await performSEOAnalysis(url);
     document.body.style.overflowY = "";
@@ -294,7 +293,7 @@ async function fillData(data) {
     renderUnsafeLink(data);
     renderHttpRequest(data);
     renderDeprecatedTag(data);
-    renderImageWithoutAlt(data);
+    renderImageWithoutAlt(data?.imagesWithoutAltText);
     renderFavicon(data);
     nonSEOFriendlyLinks(data);
     renderLoadTime(data);
@@ -303,8 +302,8 @@ async function fillData(data) {
   }
 
   const inPageLinks = {
-    "Internal Links": data.internalLinks,
-    "External Links": data.externalLinks,
+    "Internal Links": data?.internalLinks,
+    "External Links": data?.externalLinks,
   };
   renderInPageLink(inPageLinks);
 
@@ -391,39 +390,42 @@ async function renderSitemap(data) {
   }
 }
 
-async function renderImageWithoutAlt(data) {
+function renderImageWithoutAlt(imagesWithoutAltText) {
   const imagesWithoutAltAttr = document.getElementById("imagesWithoutAltAttr");
-  const missingAltCount = document.querySelector(".missing-alt-image-count");
   const imageList = document.querySelector("[img-alt-missing-list]");
 
-  let imagesWithoutAltHtml = "";
-  missingAltCount.innerHTML = data?.imagesWithoutAltText.length || 0;
-
-  if (!data?.imagesWithoutAltText || data.imagesWithoutAltText.length === 0) {
+  if (
+    !Array.isArray(imagesWithoutAltText) ||
+    imagesWithoutAltText.length === 0
+  ) {
     if (imagesWithoutAltAttr) {
       imageList.style.display = "none";
       imagesWithoutAltAttr.innerHTML = ""; // Clear the content
     }
-  } else {
-    imageList.style.display = "block";
-    imagesWithoutAltHtml += '<ol class="mb-0 pb-2">';
-    data?.imagesWithoutAltText.forEach((image) => {
-      imagesWithoutAltHtml += `<li class="py-1 text-break"><a href="${image}" target="_blank" rel="noopener noreferrer">${image}</a></li>`;
-    });
-    imagesWithoutAltHtml += "</ol>";
-
-    if (imagesWithoutAltAttr) {
-      imagesWithoutAltAttr.innerHTML = imagesWithoutAltHtml;
-    }
+    const missingAltCount = document.querySelector(".missing-alt-image-count");
+    missingAltCount.innerHTML = 0;
+    return;
   }
-}
 
+  const missingAltCount = document.querySelector(".missing-alt-image-count");
+  missingAltCount.innerHTML = imagesWithoutAltText.length;
+
+  let imagesWithoutAltHtml = '<ol class="mb-0 pb-2">';
+  imagesWithoutAltText.forEach((image) => {
+    imagesWithoutAltHtml += `<li class="py-1 text-break"><a href="${image}" target="_blank" rel="noopener noreferrer">${image}</a></li>`;
+  });
+  imagesWithoutAltHtml += "</ol>";
+
+  if (imagesWithoutAltAttr) {
+    imagesWithoutAltAttr.innerHTML = imagesWithoutAltHtml;
+  }
+
+  imageList.style.display = "block";
+}
 // render in page links
 function renderInPageLink(data) {
   const linkContainer = document.getElementById("link-container");
   linkContainer.innerHTML = "";
-  const internalLinksCount = document.querySelector(".internal-links-count");
-  internalLinksCount.innerHTML = data["Internal Links"].length.toString();
 
   for (const link in data) {
     const linkData = data[link];
@@ -486,28 +488,32 @@ function renderInPageLink(data) {
 }
 
 function renderHttpRequest(data) {
-  const { Resources, totalRequests } = data?.httpRequests;
   const httpRequestContainer = document.getElementById(
     "http-request-container"
   );
-
   const httpRequestCount = [
     ...document.getElementsByClassName("http-request-count"),
   ];
 
   httpRequestCount.forEach((item) => {
-    item.innerHTML = `${totalRequests} Resources`;
+    item.innerHTML = `${data?.httpRequests?.totalRequests} Resources`;
   });
+
   httpRequestContainer.innerHTML = "";
 
+  if (!data?.httpRequests?.Resources) {
+    return; // Exit the function if Resources property is missing or undefined
+  }
+
   // Iterate over the resources and create <li> elements for each one
-  for (const resource in Resources) {
-    const resourceData = Resources[resource];
+  for (const resource in data.httpRequests.Resources) {
+    const resourceData = data.httpRequests.Resources[resource];
 
     // Skip rendering if the resourceData array is empty
     if (resourceData.length === 0) {
       continue;
     }
+
     // Create the <li> element for the resource
     const li = document.createElement("li");
     li.classList.add("list-group-item");
@@ -531,7 +537,7 @@ function renderHttpRequest(data) {
     // Create the <span> element with class "badge badge-primary"
     const span = document.createElement("span");
     span.classList.add("badge", "badge-primary");
-    span.textContent = resourceData?.length;
+    span.textContent = resourceData.length;
     div1.appendChild(span);
 
     li.appendChild(div1);
@@ -567,7 +573,7 @@ function renderHttpRequest(data) {
 }
 
 async function renderDeprecatedTag(data) {
-  const { deprecatedTags } = data;
+  const deprecatedTags = data?.deprecatedTags ?? {};
   const deprecatedTagsWrapper = document.getElementById("deprecated-tag");
   deprecatedTagsWrapper.innerHTML = "";
 
@@ -698,25 +704,13 @@ function nonSEOFriendlyLinks({ nonSEOFriendlyLinks: links }) {
   container.appendChild(ulElement);
 }
 
-// Code Improvement Suggestions components
-function isValidNumber(number) {
-  return typeof number === "number" && !isNaN(number);
-}
-
-function isNotNullOrUndefined(value) {
-  return value !== null && value !== undefined;
-}
-
-function isNotEmptyArray(array) {
-  return Array.isArray(array) && array.length > 0;
-}
-
 // Improved version of renderLoadTime function
 function renderLoadTime(data) {
   const { loadTime } = data;
   const loadTimeElements = document.querySelectorAll(".page-loadtime");
 
-  if (isValidNumber(loadTime)) {
+  if (loadTime && loadTimeElements.length > 0) {
+    console.log(data);
     const roundedLoadTime = parseFloat(loadTime).toFixed(2);
     loadTimeElements.forEach((loadTimeElement) => {
       loadTimeElement.innerText = roundedLoadTime + " Seconds";
@@ -725,6 +719,7 @@ function renderLoadTime(data) {
     console.error("Invalid load time or missing elements.");
   }
 }
+
 function setupReportView() {
   const sections = document.querySelectorAll(".section-report");
   const viewFullReportBtn = document.getElementById("viewFullReport");

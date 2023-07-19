@@ -431,6 +431,7 @@
                     <!-- added later -->
                   </div>
                 </div>
+                <!-- SEO_REPORT -->
                 <!-- csi title -->
                 <div class="border-top p-3" bis_skin_checked="1" csi-title>
                   <div class="row" bis_skin_checked="1">
@@ -959,7 +960,11 @@
                 </div>
 
                 <!-- csi in-page link -->
-                <div class="border-top p-3" bis_skin_checked="1">
+                <div
+                  class="border-top p-3"
+                  bis_skin_checked="1"
+                  csi-in-page-link
+                >
                   <div class="row" bis_skin_checked="1">
                     <div class="col" bis_skin_checked="1">
                       <div class="row" bis_skin_checked="1">
@@ -974,6 +979,7 @@
                             >
                               <i
                                 class="an an-chack seo-icon seo-icon-success"
+                                info-icon
                               ></i>
                             </div>
                             <div class="fw-bold" bis_skin_checked="1">
@@ -982,11 +988,7 @@
                           </div>
                         </div>
                         <div class="col-12 col-lg-8" bis_skin_checked="1">
-                          <p>
-                            This webpage has
-                            <span class="internal-links-count">0</span> internal
-                            links
-                          </p>
+                          <p info-message>This webpage has 0 internal links</p>
                           <ul
                             class="list-group rounded-0 p-0 mt-3"
                             id="link-container"
@@ -5058,7 +5060,7 @@
       </form>
     </div>
 
-    <script src="js/app.js" type="module"></script>
+    <script src="js/app.js" type="module"></script> 
     <script src="js/script.js"></script>
     <script src="js/errTrack.js"></script>
   </body>
