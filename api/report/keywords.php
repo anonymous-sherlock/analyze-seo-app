@@ -1,112 +1,124 @@
 <?php
-require_once(__DIR__ . '/../../vendor/autoload.php');
-use StopWord\StopWord;
-use tidy;
+require __DIR__ . '/../../vendor/autoload.php';
+
+use DonatelloZa\RakePlus\RakePlus;
 
 header('Content-Type: application/json');
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
 
+// Load stopword file
+$stopwordFile = 'stopword/en.json';
+$stopWords = json_decode(file_get_contents($stopwordFile), true);
+// Get the URL from the query parameter
 $url = $_GET['url'];
+
 // Validate and sanitize the URL input
 if (!filter_var($url, FILTER_VALIDATE_URL)) {
-    echo json_encode(['error' => 'Please enter a valid URL.']);
+    echo json_encode(['error' => 'Please Enter a Valid URL.']);
     exit;
 }
 
-function fetchHTML($url)
+// Function to recursively extract text from HTML nodes
+function extractTextFromNode(DOMNode $node)
 {
-    $tidy = new tidy();
-    $tidy->parseFile($url, [], 'utf8');
-    $tidy->cleanRepair();
+    $text = '';
 
-    return (string) $tidy;
+    // If the node is a text node, append its value to the extracted text
+    if ($node instanceof DOMText) {
+        $text .= $node->nodeValue;
+    }
+    // If the node is an element node (not 'script' or 'style'), process its child nodes
+    elseif ($node instanceof DOMElement && !in_array($node->nodeName, ['script', 'style'])) {
+        foreach ($node->childNodes as $childNode) {
+            $text .= extractTextFromNode($childNode);
+        }
+    }
+
+    return $text;
 }
-
+// Function to extract text from the HTML content
 function extractTextFromHTML($html)
 {
-    // Remove HTML tags and attributes
-    $text = strip_tags($html);
+    // Create a DOMDocument object and suppress errors for invalid HTML
+    $dom = new DOMDocument();
+    libxml_use_internal_errors(true);
+    $dom->loadHTML($html);
+    libxml_clear_errors();
+
+    // Extract the text from the HTML using the recursive function
+    $text = extractTextFromNode($dom->documentElement);
 
     // Remove extra spaces and newlines
-    $text = preg_replace('/\s+/', ' ', $text);
+    $text = trim(preg_replace('/\s+/', ' ', $text));
 
-    return trim($text);
+    return $text;
 }
+// do not change this
+$htmlContent = file_get_contents($url);
+$text = extractTextFromHTML($htmlContent); // Extract the text and calculate the word count
+$contentLength = str_word_count($text); // Content Length Test Word Count
+$text = strtolower($text); // Convert the text to lowercase for case-insensitive matching
+$text = strip_tags($text); // Remove Tags from html
+$text = preg_replace('/[^a-z0-9\s]/', '', $text); // Remove non-alphanumeric characters except spaces
+$text = preg_replace('/\s+/', ' ', $text); // Remove extra spaces
+// Split the text into words
+$words = explode(' ', $text);
 
-function removeStopWords($text)
-{
-    $stopWords = StopWord::getStopWords('en');
-
-    // Convert the text to lowercase
-    $text = strtolower($text);
-
-    // Tokenize the text into individual words
-    $words = preg_split('/\s+/', $text);
-
-    // Remove stop words from the list of words
-    $filteredWords = array_diff($words, $stopWords);
-
-    // Reconstruct the filtered text
-    $filteredText = implode(' ', $filteredWords);
-
-    return $filteredText;
-}
-
-function calculateKeywords($text)
-{
-    $wordFrequency = [];
-    $wordScore = [];
-    $keywords = [];
-
-    $sentences = preg_split('/(?<=[.?!])\s+(?=[a-z])/i', $text); // Split text into sentences
-
-    foreach ($sentences as $sentence) {
-        $words = preg_split('/\s+/', $sentence); // Split sentence into words
-
-        foreach ($words as $word) {
-            $word = preg_replace('/[^\p{L}\p{N}\s]/u', '', $word); // Remove non-alphanumeric characters
-
-            if (!empty($word) && strlen($word) > 1) {
-                if (!isset($wordFrequency[$word])) {
-                    $wordFrequency[$word] = 0;
-                }
-                if (!isset($wordScore[$word])) {
-                    $wordScore[$word] = 0;
-                }
-
-                $wordFrequency[$word]++; // Increase word frequency
-                $wordScore[$word] += strlen($sentence); // Increase word score based on sentence length
-            }
-        }
+$wordCount = array_count_values(array_diff($words, $stopWords));
+arsort($wordCount);
+foreach ($wordCount as $word => $count) {
+    if ($count >= 3) {
+        $keywordsWithCount[] = ['keyword' => $word, 'count' => $count];
     }
-
-    foreach ($wordFrequency as $word => $frequency) {
-        $wordScore[$word] = $wordScore[$word] / $frequency; // Calculate word score
-
-        if ($wordScore[$word] >= 1.0) {
-            $keywords[] = $word; // Add word to keywords list
-        }
-    }
-
-    return $keywords;
 }
+// Get the top 20 most frequent words as keywords
+$keywords = array_slice(array_keys($wordCount), 0, 20);
+// do not change this
 
-$html = fetchHTML($url);
-$text = extractTextFromHTML($html);
-$filteredText = removeStopWords($text);
-$keywords = calculateKeywords($filteredText);
 
-// Create a response array
+
+
+$wordsAndPhrases = preg_split('/\s+/', $text);
+$wordCountlong = array_count_values(array_diff($wordsAndPhrases, $stopWords));
+arsort($wordCount);
+
+// Prepare the response array for long-tail keywords
+$longTailKeywords = [];
+
+foreach ($wordCountlong as $word => $count) {
+    // Check if the word or phrase has an occurrence count greater than or equal to 2
+    // and contains more than one word (check for the presence of spaces)
+    if ($count >= 2 && strpos($word, ' ') !== false) {
+        $longTailKeywords[] = ['keyword' => $word, 'count' => $count];
+    }
+}
+// Output the long-tail keywords
+foreach ($longTailKeywords as $longTailKeywordData) {
+    echo $longTailKeywordData['keyword'] . ' (' . $longTailKeywordData['count'] . ')' . PHP_EOL;
+}
+var_dump($longTailKeywords);
+
+
+
+
+
+
+// $rake = RakePlus::create($text, 'en_US');
+// $phrases = RakePlus::create($text, 'en_US', 10, true)->get();
+// $phrase_scores = $rake->sortByScore('desc')->scores();
+// $rakeKeyword = RakePlus::create($text)->keywords();
+
+
+
+
+
+
+
 $response = [
-    'keywords' => $keywords
+    'wordCount' => $contentLength,
+    // 'rakeKeyword' => $rakeKeyword,
+    // 'phrase' => $phrases,
+    'keywordWithCount' => $keywordsWithCount
 ];
 
-// Convert the response array to JSON
-$jsonResponse = json_encode($response);
-
-// Send the JSON response
-echo $jsonResponse;
-
-
+echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 ?>

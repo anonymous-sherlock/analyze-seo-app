@@ -106,7 +106,8 @@ class FillData {
     this.renderHttpRequest(this.data);
     this.renderImageWithoutAlt(imagesWithoutAltText);
     this.renderInPageLink(inPageLinks);
-    this.nonSEOFriendlyLinks(nonSEOFriendlyLinks);
+    this.renderNonSEOFriendlyLinks(nonSEOFriendlyLinks);
+    this.renderUrlRedirects(this.data);
   }
 
   updateUI(selector, message, formatter) {
@@ -431,7 +432,7 @@ class FillData {
       linkContainer.appendChild(linkTag);
     }
   }
-  nonSEOFriendlyLinks(links) {
+  renderNonSEOFriendlyLinks(links) {
     const container = document.getElementById("non-seo-friendly-url");
 
     // Remove the existing UI element if it exists
@@ -503,6 +504,17 @@ class FillData {
     ulElement.appendChild(liElement);
 
     container.appendChild(ulElement);
+  }
+  renderUrlRedirects(data) {
+    const { url, redirects } = data;
+    const UrlRedirectElement = document.querySelector(".url-redirect");
+    if (redirects) {
+      if (url !== redirects) {
+        UrlRedirectElement.innerHTML = `<code>${url}</code>
+      <span class="px-1 bg-info text-white">&rarr;</span>
+      <code>${redirects}</code>`;
+      }
+    }
   }
 }
 
