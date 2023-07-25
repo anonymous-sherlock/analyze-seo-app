@@ -77,25 +77,12 @@ $keywords = array_slice(array_keys($wordCount), 0, 20);
 
 
 
-$wordsAndPhrases = preg_split('/\s+/', $text);
-$wordCountlong = array_count_values(array_diff($wordsAndPhrases, $stopWords));
-arsort($wordCount);
 
-// Prepare the response array for long-tail keywords
-$longTailKeywords = [];
 
-foreach ($wordCountlong as $word => $count) {
-    // Check if the word or phrase has an occurrence count greater than or equal to 2
-    // and contains more than one word (check for the presence of spaces)
-    if ($count >= 2 && strpos($word, ' ') !== false) {
-        $longTailKeywords[] = ['keyword' => $word, 'count' => $count];
-    }
-}
-// Output the long-tail keywords
-foreach ($longTailKeywords as $longTailKeywordData) {
-    echo $longTailKeywordData['keyword'] . ' (' . $longTailKeywordData['count'] . ')' . PHP_EOL;
-}
-var_dump($longTailKeywords);
+
+
+
+
 
 
 
@@ -106,11 +93,6 @@ var_dump($longTailKeywords);
 // $phrases = RakePlus::create($text, 'en_US', 10, true)->get();
 // $phrase_scores = $rake->sortByScore('desc')->scores();
 // $rakeKeyword = RakePlus::create($text)->keywords();
-
-
-
-
-
 
 
 $response = [

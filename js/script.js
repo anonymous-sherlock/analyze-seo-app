@@ -80,6 +80,8 @@ class FillData {
       headings,
       imagesWithoutAltText,
       nonSEOFriendlyLinks,
+      hasRobotsTxt,
+      hasNoIndex,
     } = this.data;
     const inPageLinks = {
       "Internal Links": this.data.internalLinks,
@@ -94,6 +96,7 @@ class FillData {
     this.updateUI(".page-loadtime", loadTime, "loadTime");
     this.updateUI(".site-lang", language);
     this.updateUI(".site-icon", favicon);
+    this.updateUI(".no-index-value", hasNoIndex);
     this.updateUI(".spf-record", spfRecord);
     this.updateUI(
       ".http-request-count",

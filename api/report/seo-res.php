@@ -1,5 +1,5 @@
 <?php
-require_once(__DIR__ . '/../../vendor/autoload.php');
+require_once __DIR__ . '/autoload.php';
 use GuzzleHttp\Client;
 use GuzzleHttp\Promise;
 use GuzzleHttp\Psr7\Response;
@@ -9,12 +9,8 @@ use GuzzleHttp\Promise\Utils;
 use DonatelloZa\RakePlus\RakePlus;
 
 
-// Initialize the GuzzleHttp client outside the function for connection pooling
 $client = new Client();
-
-header('Content-Type: application/json');
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+// Initialize the GuzzleHttp client outside the function for connection pooling
 
 $url = $_GET['url'];
 // Validate and sanitize the URL input
@@ -97,8 +93,14 @@ libxml_use_internal_errors(false);
 
 // Create a DOMXPath object to query the DOM
 $xpath = new DOMXPath($dom);
+
+
+// Checking for Doctype
+$hasDoctype = strpos($html, '<!DOCTYPE html>') !== false;
 // Language
 $language = $dom->documentElement->getAttribute('lang');
+// checking framset
+$hasFramesets = $xpath->evaluate('count(//frameset) > 0') ?: false;
 // Favicon
 $favicon = '';
 $faviconNode = $xpath->query('/html/head/link[@rel="icon" or @rel="shortcut icon"]/@href')->item(0);
@@ -131,15 +133,9 @@ foreach ($headings as $heading => &$value) {
 }
 
 
-// Checking for Doctype
-$hasDoctype = strpos($html, '<!DOCTYPE html>') !== false;
-// checking framset
-$hasFramesets = $xpath->evaluate('count(//frameset) > 0') ?: false;
-
 // Initialize totalImageCount
 $totalImageCount = 0;
 // Extract images without alt attribute text and total images used on the website
-
 $imagesWithoutAltText = [];
 $imageNodes = $dom->getElementsByTagName('img');
 foreach ($imageNodes as $imageNode) {
@@ -781,6 +777,11 @@ $executionTime = $endtime - $starttime;
 
 
 
+
+
+// $endexec = microtime(true);
+// $totalexec = $endexec - $startexec;
+// echo "Execution time: " . $totalexec . " seconds\n" . PHP_EOL;
 
 // End output buffering
 ob_end_flush();
